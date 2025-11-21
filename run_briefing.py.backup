@@ -31,18 +31,17 @@ from sqlmodel import select
 # --- Setup ---
 load_dotenv()
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY")
 
 if not API_KEY:
     raise ValueError("ANTHROPIC_API_KEY not found in .env file")
 
-if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY not found in .env file")
+if not EMBEDDING_API_KEY:
+    raise ValueError("EMBEDDING_API_KEY not found in .env file")
 
 # Use the correct client for Deepseek, not OpenAI
 client = anthropic.Anthropic(api_key=API_KEY)
-embedding_client = openai.Client(api_key=OPENAI_API_KEY)
-openai_chat_client = openai.Client(api_key=OPENAI_API_KEY)
+embedding_client = openai.Client(api_key=EMBEDDING_API_KEY)
 
 #def call_deepseek_chat(prompt, model=config.DEEPSEEK_CHAT_MODEL, system_prompt=None):
 #    """Calls the Deepseek Chat API."""
@@ -91,59 +90,35 @@ def get_deepseek_embedding(text, model=config.EMBEDDING_MODEL):
          return None
     
 
-def call_llm(prompt, model, system_prompt=None, max_tokens=2048, temperature=0.7):
+def call_claude_chat(prompt, model=config.CLAUDE_MODEL, system_prompt=None):
     """Calls the Claude API for chat completion."""
-
-    if model.startswith("gpt"):
-        try:
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-            
-            response = openai_chat_client.chat.completions.create(
+    try:
+        if system_prompt:
+            response = client.messages.create(
                 model=model,
-                messages=messages,
-                max_completion_tokens=max_tokens
+                max_tokens=2048,
+                temperature=0.7,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
             )
-            return response.choices[0].message.content.strip()
-        
-        except Exception as e:
-            print(f"Error calling OpenAI API: {e}")
-            time.sleep(1)
-            return None
+        else:
+            response = client.messages.create(
+                model=model,
+                max_tokens=2048,
+                temperature=0.7,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
         
 
-    elif model.startswith("claude"):
-        try:
-            if system_prompt:
-                response = client.messages.create(
-                    model=model,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    system=system_prompt,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-            else:
-                response = client.messages.create(
-                    model=model,
-                    max_tokens=2048,
-                    temperature=0.7,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-            return response.content[0].text.strip()
-        
-        except Exception as e:
-            print(f"Error calling Claude API: {e}")
-            time.sleep(1)
-            return None
+        return response.content[0].text.strip()
     
-    else:
-        print(f"Unknown model type: {model}")
+    except Exception as e:
+        print(f"Error calling Claude API: {e}")
+        time.sleep(1)
         return None
 
 
@@ -239,9 +214,7 @@ def process_articles(feed_profile, effective_config):
     """Processes unprocessed articles: summarizes and generates embeddings."""
     print("\n--- Starting Article Processing ---")
     #chat_model = getattr(effective_config, 'DEEPSEEK_CHAT_MODEL', 'deepseek-chat') # Get model from effective config
-    #chat_model = getattr(effective_config, 'CLAUDE_MODEL', 'claude-sonnet-4-5-20250929') # Get model from effective config
-    #summary_prompt_template = getattr(effective_config, 'PROMPT_ARTICLE_SUMMARY', config.PROMPT_ARTICLE_SUMMARY)
-    summary_model = getattr(effective_config, 'SUMMARY_MODEL', config.SUMMARY_MODEL)
+    chat_model = getattr(effective_config, 'CLAUDE_MODEL', 'claude-sonnet-4-5-20250929') # Get model from effective config
     summary_prompt_template = getattr(effective_config, 'PROMPT_ARTICLE_SUMMARY', config.PROMPT_ARTICLE_SUMMARY)
 
     unprocessed = database.get_unprocessed_articles(feed_profile, 1000)
@@ -260,7 +233,7 @@ def process_articles(feed_profile, effective_config):
             article_content=article['raw_content'][:4000] # Limit context
         )
         #summary = call_deepseek_chat(summary_prompt, model=chat_model)
-        summary = call_llm(summary_prompt, model=summary_model)
+        summary = call_claude_chat(summary_prompt, model=chat_model)
 
         if not summary:
             print(f"Skipping article {article['id']} due to summarization error.")
@@ -292,9 +265,7 @@ def rate_articles(feed_profile, effective_config):
         return
 
     #chat_model = getattr(effective_config, 'DEEPSEEK_CHAT_MODEL', 'deepseek-chat')
-    #chat_model = getattr(effective_config, 'CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
-    #rating_prompt_template = getattr(effective_config, 'PROMPT_IMPACT_RATING', config.PROMPT_IMPACT_RATING)
-    rating_model = getattr(effective_config, 'RATING_MODEL', config.RATING_MODEL)
+    chat_model = getattr(effective_config, 'CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
     rating_prompt_template = getattr(effective_config, 'PROMPT_IMPACT_RATING', config.PROMPT_IMPACT_RATING)
 
     unrated = database.get_unrated_articles(feed_profile, 1000)
@@ -316,7 +287,7 @@ def rate_articles(feed_profile, effective_config):
             summary=summary
         )
         #rating_response = call_deepseek_chat(rating_prompt, model=chat_model)
-        rating_response = call_llm(rating_prompt, model=rating_model)
+        rating_response = call_claude_chat(rating_prompt, model=chat_model)
 
         impact_score = None
         if rating_response:
@@ -415,8 +386,6 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
     )
     print(f"DEBUG: Using Cluster Analysis Prompt Template:\n'''{cluster_analysis_prompt_template[:100]}...'''") # Debug
 
-    cluster_model = getattr(effective_config, 'CLUSTER_MODEL', config.CLUSTER_MODEL)
-
     for i in range(n_clusters): # Use the actual n_clusters determined
         cluster_indices = np.where(labels == i)[0]
         if len(cluster_indices) == 0: continue # Skip empty clusters
@@ -435,8 +404,7 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
 
         # *** Call LLM with the formatted prompt ***
         #cluster_analysis = call_deepseek_chat(analysis_prompt) # System prompt could also be configurable
-        #cluster_analysis = call_claude_chat(analysis_prompt)
-        cluster_analysis = call_llm(analysis_prompt, model=cluster_model)
+        cluster_analysis = call_claude_chat(analysis_prompt)
 
         if cluster_analysis:
             # (Consider adding more robust filtering of non-analysis responses)
@@ -459,16 +427,13 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
     cluster_analyses_text = ""
     for i, cluster in enumerate(cluster_analyses[:5]):
         cluster_analyses_text += f"--- Cluster {i+1} ({cluster['size']} articles) ---\nAnalysis: {cluster['analysis']}\n\n"
-    
-    brief_model = getattr(effective_config, 'BRIEF_MODEL', config.BRIEF_MODEL)
 
     synthesis_prompt = brief_synthesis_prompt_template.format(
         cluster_analyses_text=cluster_analyses_text,
         feed_profile=feed_profile
     )
     #final_brief_md = call_deepseek_chat(synthesis_prompt)
-    #final_brief_md = call_claude_chat(synthesis_prompt)
-    final_brief_md = call_llm(synthesis_prompt, model=brief_model)
+    final_brief_md = call_claude_chat(synthesis_prompt)
 
     if final_brief_md:
         database.save_brief(final_brief_md, article_ids, feed_profile)
