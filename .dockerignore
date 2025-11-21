@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Database files (we'll use volumes for these)
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Documentation that doesn't need to be in the image
+README.md
+LICENSE
+docs/
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose.yml

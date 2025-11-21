@@ -61,10 +61,6 @@ BRIEFING_ARTICLE_LOOKBACK_HOURS = 24
 # Model for summarization and analysis (check Deepseek docs for latest models)
 #DEEPSEEK_CHAT_MODEL = "deepseek-chat"
 CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
-SUMMARY_MODEL = "gpt-5-nano"
-RATING_MODEL = "gpt-5-nano"
-CLUSTER_MODEL = "gpt-5-mini"
-BRIEF_MODEL = "claude-sonnet-4-5-20250929"
 # Model for embeddings
 EMBEDDING_MODEL = "text-embedding-3-small"
 
@@ -88,7 +84,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_FILE}")
 
 # API Keys
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY")
 
 # Flask configuration
 FLASK_SECRET_KEY = os.getenv(
