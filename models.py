@@ -52,6 +52,15 @@ class Article(SQLModel, table=True):
     impact_score: Optional[int] = None
     image_url: Optional[str] = None
     feed_profile: str = Field(default="default", index=True)
+    brief_ids: Optional[str] = Field(
+        default=None,
+        description="JSON array of brief IDs where this article was used"
+    )
+    initial_filter_score: Optional[int] = Field(
+        default=None,
+        description="Initial relevance score (1-5) from RSS snippet analysis"
+    )
+    briefing_analyzed: bool = Field(default=False, index=True)
 
 
 class Brief(SQLModel, table=True):

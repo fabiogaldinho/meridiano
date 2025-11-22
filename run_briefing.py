@@ -3,7 +3,7 @@
 import os
 import importlib
 import feedparser
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import time
 import re
@@ -26,7 +26,7 @@ except ImportError:
 
 import database
 from models import Article, get_session
-from sqlmodel import select
+from sqlmodel import select, func, and_
 
 # --- Setup ---
 load_dotenv()
@@ -39,31 +39,53 @@ if not API_KEY:
 if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY not found in .env file")
 
+
+def send_telegram_notification(message, parse_mode='HTML'):
+    """
+    Envia notificação push via Telegram bot.
+    
+    Args:
+        message: O texto da mensagem a ser enviada
+        parse_mode: Formato do texto - 'HTML' ou 'Markdown'
+    
+    A função falha silenciosamente se as credenciais não estiverem configuradas
+    ou se houver erro ao enviar, para não quebrar o pipeline principal.
+    """
+    bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+    chat_id = os.getenv('TELEGRAM_CHAT_ID')
+    
+    if not bot_token or not chat_id:
+        return
+    
+    try:
+        import requests
+        
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        
+        payload = {
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': parse_mode,
+            'disable_web_page_preview': True
+        }
+        
+        response = requests.post(url, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            print(f"Telegram notification sent successfully")
+        else:
+            print(f"Warning: Telegram notification failed with status {response.status_code}")
+            print(f"Response: {response.text[:200]}")
+            
+    except Exception as e:
+        print(f"Warning: Failed to send Telegram notification: {e}")
+
+
 # Use the correct client for Deepseek, not OpenAI
 client = anthropic.Anthropic(api_key=API_KEY)
 embedding_client = openai.Client(api_key=OPENAI_API_KEY)
 openai_chat_client = openai.Client(api_key=OPENAI_API_KEY)
 
-#def call_deepseek_chat(prompt, model=config.DEEPSEEK_CHAT_MODEL, system_prompt=None):
-#    """Calls the Deepseek Chat API."""
-#    messages = []
-#    if system_prompt:
-#        messages.append({"role": "system", "content": system_prompt})
-#    messages.append({"role": "user", "content": prompt})##
-#
-#    try:
-#        response = client.chat.completions.create(
-#            model=model,
-#            messages=messages,
-#            max_tokens=2048, # Adjust as needed
-#            temperature=0.7, # Adjust for desired creativity/factuality
-#        )
-#        return response.choices[0].message.content.strip()
-#    except Exception as e:
-#        print(f"Error calling Deepseek Chat API: {e}")
-#        # Implement retry logic or better error handling here if needed
-#        time.sleep(1) # Basic backoff
-#        return None
 
 def get_deepseek_embedding(text, model=config.EMBEDDING_MODEL):
     """Gets embeddings."""
@@ -147,12 +169,101 @@ def call_llm(prompt, model, system_prompt=None, max_tokens=2048, temperature=0.7
         return None
 
 
+def evaluate_rss_snippet_relevance(title, description, feed_profile, effective_config):
+    """
+    Evaluates if an RSS entry is worth fetching and processing based on title and snippet.
+    Uses a cheap model to make a quick relevance judgment.
+    
+    Args:
+        title: Article title from RSS
+        description: Article description/snippet from RSS
+        feed_profile: Which feed profile this is for
+        effective_config: Config object with prompts and model settings
+        
+    Returns:
+        int: Score from 1-5, or None if evaluation failed
+    """
+    
+    filter_model = getattr(effective_config, 'FILTER_MODEL', config.FILTER_MODEL)
+    
+    filter_prompt_template = getattr(
+        effective_config, 
+        'PROMPT_INITIAL_FILTER',
+        """Avalie rapidamente se este artigo parece relevante para o tema '{feed_profile}'.
+
+            Título: {title}
+            Descrição: {description}
+
+            Baseado APENAS nestas informações, dê um score de 1 a 5:
+
+            1 = Completamente irrelevante, descarte
+            2 = Provavelmente irrelevante, mas não tenho certeza
+            3 = Pode ser relevante, vale investigar
+            4 = Provavelmente relevante
+            5 = Claramente relevante e importante
+
+            Seja CONSERVADOR - na dúvida, dê score menor. É melhor descartar um artigo duvidoso que processar muito lixo.
+
+            Responda APENAS com o número (1-5)."""
+    )
+    
+    prompt = filter_prompt_template.format(
+        feed_profile=feed_profile,
+        title=title or "Sem título",
+        description=description or "Sem descrição"
+    )
+    
+    try:
+        response = call_llm(
+            prompt,
+            model=filter_model,
+            max_tokens=10
+        )
+        
+        if not response:
+            print(f"  Warning: No response from filter model")
+            return None
+        
+        import re
+        match = re.search(r'\b([1-5])\b', response.strip())
+        if match:
+            score = int(match.group(1))
+            print(f"  Initial filter score: {score}/5 - {title[:60]}...")
+            return score
+        else:
+            print(f"  Warning: Could not parse filter score from '{response}'")
+            return None
+            
+    except Exception as e:
+        print(f"  Error in initial filter evaluation: {e}")
+        return None
+
+
 
 # --- Core Functions ---
 
-def scrape_articles(feed_profile, rss_feeds): # Added params
+def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
     """Scrapes articles for a specific feed profile."""
     print(f"\n--- Starting Article Scraping [{feed_profile}] ---")
+
+
+    with get_session() as session:
+        existing_count = session.exec(
+            select(func.count(Article.id)).where(Article.feed_profile == feed_profile)
+        ).one()
+    
+    is_cold_start = (existing_count == 0)
+    
+    if is_cold_start:
+        max_age_days = getattr(effective_config, 'SCRAPING_MAX_AGE_DAYS_INITIAL', 7)
+        print(f"Cold start detected for '{feed_profile}' - accepting articles up to {max_age_days} days old")
+    else:
+        max_age_days = getattr(effective_config, 'SCRAPING_MAX_AGE_DAYS_NORMAL', 3)
+        print(f"Normal execution for '{feed_profile}' - accepting articles up to {max_age_days} days old")
+    
+    cutoff_date = datetime.now() - timedelta(days=max_age_days)
+
+
     new_articles_count = 0
     if not rss_feeds:
         print(f"Warning: No RSS_FEEDS defined for profile '{feed_profile}'. Skipping scrape.")
@@ -167,17 +278,59 @@ def scrape_articles(feed_profile, rss_feeds): # Added params
         for entry in feed.entries:
             url = entry.get('link')
             title = entry.get('title', 'No Title')
+            description = entry.get('description', '') or entry.get('summary', '')
             published_parsed = entry.get('published_parsed')
             published_date = datetime(*published_parsed[:6]) if published_parsed else datetime.now()
             feed_source = feed.feed.get('title', feed_url)
 
             if not url: continue
 
+            if published_date < cutoff_date:
+                print(f"  Skipping old article from {published_date.strftime('%Y-%m-%d')}: {title[:60]}...")
+                continue
+
             # --- Check if article exists ---
             with get_session() as session:
                 exists = session.exec(select(Article).where(Article.url == url)).first()
             if exists: continue
             # --- End Check ---
+
+
+            # FILTRO INICIAL - Avaliar se vale a pena processar este artigo
+            print(f"Evaluating: {title[:70]}...")
+
+            min_filter_score = getattr(effective_config, 'MIN_INITIAL_FILTER_SCORE', 3)
+
+            filter_score = evaluate_rss_snippet_relevance(
+                title, 
+                description, 
+                feed_profile,
+                effective_config
+            )
+
+            if filter_score is None:
+                filter_score = 3
+                print(f"  Filter evaluation failed, assuming score 3")
+
+            if filter_score < min_filter_score:
+                print(f"  FILTERED OUT (score {filter_score} < {min_filter_score})")
+
+                database.add_article(
+                    url=url,
+                    title=title,
+                    published_date=published_date,
+                    feed_source=feed_source,
+                    raw_content=None,
+                    feed_profile=feed_profile,
+                    image_url=None,
+                    initial_filter_score=filter_score
+                )
+
+                continue
+
+            print(f"  PASSED filter (score {filter_score} >= {min_filter_score})")
+
+
 
             print(f"Processing new entry: {title} ({url})")
 
@@ -227,7 +380,8 @@ def scrape_articles(feed_profile, rss_feeds): # Added params
             article_id = database.add_article(
                 url, title, published_date, feed_source, raw_content,
                 feed_profile,
-                final_image_url
+                final_image_url,
+                initial_filter_score=filter_score
             )
             if article_id: new_articles_count += 1
             time.sleep(0.5) # Be polite
@@ -238,9 +392,6 @@ def scrape_articles(feed_profile, rss_feeds): # Added params
 def process_articles(feed_profile, effective_config):
     """Processes unprocessed articles: summarizes and generates embeddings."""
     print("\n--- Starting Article Processing ---")
-    #chat_model = getattr(effective_config, 'DEEPSEEK_CHAT_MODEL', 'deepseek-chat') # Get model from effective config
-    #chat_model = getattr(effective_config, 'CLAUDE_MODEL', 'claude-sonnet-4-5-20250929') # Get model from effective config
-    #summary_prompt_template = getattr(effective_config, 'PROMPT_ARTICLE_SUMMARY', config.PROMPT_ARTICLE_SUMMARY)
     summary_model = getattr(effective_config, 'SUMMARY_MODEL', config.SUMMARY_MODEL)
     summary_prompt_template = getattr(effective_config, 'PROMPT_ARTICLE_SUMMARY', config.PROMPT_ARTICLE_SUMMARY)
 
@@ -291,9 +442,6 @@ def rate_articles(feed_profile, effective_config):
         print("Skipping rating: Deepseek client not initialized.")
         return
 
-    #chat_model = getattr(effective_config, 'DEEPSEEK_CHAT_MODEL', 'deepseek-chat')
-    #chat_model = getattr(effective_config, 'CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
-    #rating_prompt_template = getattr(effective_config, 'PROMPT_IMPACT_RATING', config.PROMPT_IMPACT_RATING)
     rating_model = getattr(effective_config, 'RATING_MODEL', config.RATING_MODEL)
     rating_prompt_template = getattr(effective_config, 'PROMPT_IMPACT_RATING', config.PROMPT_IMPACT_RATING)
 
@@ -315,7 +463,6 @@ def rate_articles(feed_profile, effective_config):
         rating_prompt = rating_prompt_template.format(
             summary=summary
         )
-        #rating_response = call_deepseek_chat(rating_prompt, model=chat_model)
         rating_response = call_llm(rating_prompt, model=rating_model)
 
         impact_score = None
@@ -350,21 +497,94 @@ def rate_articles(feed_profile, effective_config):
 
     print(f"--- Rating Finished. Rated {rated_count} articles. ---")
 
+def append_article_references(brief_markdown, articles, feed_profile):
+    """
+    Appends a "References" section to the briefing with links to source articles.
+    
+    Args:
+        brief_markdown (str): The generated briefing text
+        articles (list): List of article dictionaries used in the briefing
+        feed_profile (str): The feed profile name
+    
+    Returns:
+        str: The briefing with references section appended
+    """
+    references_section = "\n\n---\n\n## Artigos de Referência\n\n"
+    references_section += f"Este briefing foi gerado a partir de {len(articles)} artigos:\n\n"
+    
+    sorted_articles = sorted(
+        articles,
+        key=lambda x: (
+            x.get('impact_score') is not None,
+            x.get('impact_score') or 0
+        ),
+        reverse=True
+    )
+    
+    # Adicionar cada artigo como item da lista
+    for i, article in enumerate(sorted_articles, 1):
+        title = article.get('title', 'Sem título')
+        url = article.get('url', '#')
+        source = article.get('feed_source', 'Fonte desconhecida')
+        impact = article.get('impact_score')
+        published = article.get('published_date')
+        
+        date_str = ""
+        if published:
+            if isinstance(published, str):
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(published.replace('Z', '+00:00'))
+                    date_str = dt.strftime('%d/%m/%Y')
+                except:
+                    date_str = published
+            else:
+                date_str = published.strftime('%d/%m/%Y')
+        
+        ref_line = f"{i}. **[{title}]({url})**"
+        
+        metadata_parts = []
+        if source:
+            metadata_parts.append(source)
+        if date_str:
+            metadata_parts.append(date_str)
+        if impact is not None:
+            metadata_parts.append(f"Impacto: {impact}/10")
+        
+        if metadata_parts:
+            ref_line += f" - *{' | '.join(metadata_parts)}*"
+        
+        references_section += ref_line + "\n"
+    
+    return brief_markdown + references_section
+
+
+
 
 def generate_brief(feed_profile, effective_config): # Added feed_profile param
     """Generates the briefing for a specific feed profile."""
     print(f"\n--- Starting Brief Generation [{feed_profile}] ---")
     # Get articles *for this specific profile*
+    min_impact_score = getattr(effective_config, 'MIN_IMPACT_SCORE_FOR_BRIEFING', 5)
+
+    # Get articles que ainda não foram analisados
     articles = database.get_articles_for_briefing(
-        config.BRIEFING_ARTICLE_LOOKBACK_HOURS,
-        feed_profile
+        feed_profile,
+        min_impact_score
     )
 
-    if not articles or len(articles) < config.MIN_ARTICLES_FOR_BRIEFING:
-        print(f"Not enough recent articles ({len(articles)}) for profile '{feed_profile}'. Min required: {config.MIN_ARTICLES_FOR_BRIEFING}.")
+    if not articles:
+        print(f"No new articles available for briefing [{feed_profile}].")
+        print("Skipping brief generation - all recent articles already used.")
+        return
+    
+    if len(articles) < config.MIN_ARTICLES_FOR_BRIEFING:
+        print(f"Not enough NEW articles ({len(articles)}) for profile '{feed_profile}'.")
+        print(f"Minimum required: {config.MIN_ARTICLES_FOR_BRIEFING}.")
+        print("Skipping brief generation.")
         return
 
-    print(f"Generating brief from {len(articles)} articles.")
+    print(f"Generating brief from {len(articles)} NEW articles.")
 
     # Prepare data for clustering
     article_ids = [a['id'] for a in articles]
@@ -466,12 +686,63 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
         cluster_analyses_text=cluster_analyses_text,
         feed_profile=feed_profile
     )
-    #final_brief_md = call_deepseek_chat(synthesis_prompt)
-    #final_brief_md = call_claude_chat(synthesis_prompt)
     final_brief_md = call_llm(synthesis_prompt, model=brief_model)
 
     if final_brief_md:
-        database.save_brief(final_brief_md, article_ids, feed_profile)
+
+        final_brief_md = append_article_references(
+            final_brief_md, 
+            articles,
+            feed_profile
+        )
+
+        brief_id = database.save_brief(final_brief_md, article_ids, feed_profile)
+
+        print(f"\nMarking all {len(articles)} considered articles as analyzed...")
+        with get_session() as session:
+            for article_dict in articles:
+                article = session.exec(
+                    select(Article).where(Article.id == article_dict['id'])
+                ).first()
+                
+                if article:
+                    article.briefing_analyzed = True
+                    session.add(article)
+            
+            session.commit()
+        print(f"All {len(articles)} articles marked as analyzed")
+
+
+        print(f"Adding brief_id to {len(article_ids)} articles included in briefing...")
+        with get_session() as session:
+            for art_id in article_ids:
+                article = session.exec(
+                    select(Article).where(Article.id == art_id)
+                ).first()
+                
+                if article:
+                    existing_ids = json.loads(article.brief_ids) if article.brief_ids else []
+                    if brief_id not in existing_ids:
+                        existing_ids.append(brief_id)
+                        article.brief_ids = json.dumps(existing_ids)
+                        session.add(article)
+            
+            session.commit()
+
+        print(f"Brief ID {brief_id} added to included articles")
+
+
+        notification_message = f"""
+        <b>📰 Novo Briefing Meridiano</b>
+
+        <b>Feed:</b> {feed_profile}
+        <b>Artigos:</b> {len(articles)}
+        <b>ID:</b> {brief_id}
+
+        Acesse em: https://galdinho.news
+        """
+        send_telegram_notification(notification_message)
+
         print(f"--- Brief Generation Finished Successfully [{feed_profile}] ---")
     else:
         print(f"--- Brief Generation Failed [{feed_profile}]: Could not synthesize final brief. ---")
@@ -570,7 +841,7 @@ if __name__ == "__main__":
 
     if should_run_all:
         print("\n>>> Running ALL stages <<<")
-        if current_rss_feeds: scrape_articles(feed_profile_name, current_rss_feeds)
+        if current_rss_feeds: scrape_articles(feed_profile_name, current_rss_feeds, effective_config)
         else: print("Skipping scrape stage: No RSS_FEEDS found for profile.")
         process_articles(feed_profile_name, effective_config)
         rate_articles(feed_profile_name, effective_config)
@@ -580,7 +851,7 @@ if __name__ == "__main__":
         if args.scrape:
             if current_rss_feeds:
                  print(f"\n>>> Running ONLY Scrape Articles stage [{feed_profile_name}] <<<")
-                 scrape_articles(feed_profile_name, current_rss_feeds)
+                 scrape_articles(feed_profile_name, current_rss_feeds, effective_config)
             else: print(f"Cannot run scrape stage: No RSS_FEEDS found for profile '{feed_profile_name}'.")
         if args.process:
             print("\n>>> Running ONLY Process Articles stage <<<")

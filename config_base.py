@@ -55,7 +55,7 @@ Analyzed News Clusters (Most significant first):
 
 # --- Processing Settings ---
 # How many hours back to look for articles when generating a brief
-BRIEFING_ARTICLE_LOOKBACK_HOURS = 24
+MIN_IMPACT_SCORE_FOR_BRIEFING = 5
 
 # --- Model Settings ---
 # Model for summarization and analysis (check Deepseek docs for latest models)
@@ -65,12 +65,15 @@ SUMMARY_MODEL = "gpt-5-nano"
 RATING_MODEL = "gpt-5-nano"
 CLUSTER_MODEL = "gpt-5-mini"
 BRIEF_MODEL = "claude-sonnet-4-5-20250929"
-# Model for embeddings
+FILTER_MODEL = "gpt-4o-mini"
 EMBEDDING_MODEL = "text-embedding-3-small"
 
 # Approximate number of clusters to aim for. Fine-tune based on results.
 # Alternatively, use algorithms like DBSCAN that don't require specifying k.
 N_CLUSTERS = 10  # Example, adjust as needed
+
+# --- Filtering Settings ---
+MIN_INITIAL_FILTER_SCORE = 3
 
 # Minimum number of articles required to attempt clustering/briefing
 MIN_ARTICLES_FOR_BRIEFING = 5
@@ -79,6 +82,9 @@ ARTICLES_PER_PAGE = 15
 
 MANUALLY_ADDED_PROFILE_NAME = 'manual'
 DEFAULT_FEED_PROFILE = 'default'
+
+SCRAPING_MAX_AGE_DAYS_INITIAL = 7
+SCRAPING_MAX_AGE_DAYS_NORMAL = 3
 
 # --- Other ---
 DATABASE_FILE = "meridian.db"  # Keep for backward compatibility
