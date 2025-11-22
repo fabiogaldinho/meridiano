@@ -119,6 +119,7 @@ def _build_article_filters(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     feed_profile: Optional[str] = None,
+    only_processed: bool = False
 ):
     """Helper for building filter conditions for articles."""
     filters = []
@@ -129,6 +130,19 @@ def _build_article_filters(
         filters.append(func.date(Article.published_date) <= func.date(end_date))
     if feed_profile:
         filters.append(Article.feed_profile == feed_profile)
+    
+    if only_processed:
+        filters.append(Article.processed_at.is_not(None))
+        filters.append(Article.embedding.is_not(None))
+        filters.append(Article.impact_score.is_not(None))
+    
+    filters.append(
+            or_(
+                Article.initial_filter_score.is_(None),
+                Article.initial_filter_score >= 3
+            )
+        )
+
 
     return filters
 
@@ -142,6 +156,7 @@ def get_all_articles(
     end_date: Optional[date] = None,
     feed_profile: Optional[str] = None,
     search_term: Optional[str] = None,
+    only_processed: bool = True
 ) -> List[Dict[str, Any]]:
     """
     Fetches articles with filtering, sorting, and full-text search.
@@ -152,7 +167,7 @@ def get_all_articles(
         statement = select(Article)
 
         # Apply basic filters
-        filters = _build_article_filters(start_date, end_date, feed_profile)
+        filters = _build_article_filters(start_date, end_date, feed_profile, only_processed)
         if filters:
             statement = statement.where(and_(*filters))
 
@@ -205,6 +220,7 @@ def get_total_article_count(
     end_date: Optional[date] = None,
     feed_profile: Optional[str] = None,
     search_term: Optional[str] = None,
+    only_processed: bool = True
 ) -> int:
     """Returns total count of articles with optional filtering and search."""
     with get_session() as session:
@@ -212,7 +228,7 @@ def get_total_article_count(
         statement = select(func.count(Article.id))
 
         # Apply basic filters
-        filters = _build_article_filters(start_date, end_date, feed_profile)
+        filters = _build_article_filters(start_date, end_date, feed_profile, only_processed)
         if filters:
             statement = statement.where(and_(*filters))
 
@@ -250,6 +266,7 @@ def add_article(
     raw_content: str,
     feed_profile: str,
     image_url: Optional[str] = None,
+    initial_filter_score: Optional[int] = None,
 ) -> Optional[int]:
     """Adds a new article with optional image URL."""
     with get_session() as session:
@@ -277,6 +294,7 @@ def add_article(
                 image_url=image_url,
                 feed_profile=feed_profile,
                 fetched_at=datetime.now(),
+                initial_filter_score=initial_filter_score
             )
             session.add(article)
             session.commit()
@@ -327,22 +345,33 @@ def update_article_processing(
 
 
 def get_articles_for_briefing(
-    lookback_hours: int, feed_profile: str
+    feed_profile: str,
+    min_impact_score: int = 5
 ) -> List[Dict[str, Any]]:
-    """Gets recently processed articles for a specific feed profile."""
-    cutoff_time = datetime.now() - timedelta(hours=lookback_hours)
-
+    """
+    Gets articles that are ready for briefing but haven't been analyzed yet.
+    
+    Args:
+        feed_profile: Which feed profile to get articles for
+        min_impact_score: Minimum impact score to consider (default 5)
+    
+    Returns:
+        List of article dictionaries ready for briefing
+    """
     with get_session() as session:
         statement = (
             select(Article)
             .where(
                 and_(
-                    Article.processed_at >= cutoff_time,
-                    Article.embedding.is_not(None),
                     Article.feed_profile == feed_profile,
+                    Article.processed_at.is_not(None),
+                    Article.embedding.is_not(None),
+                    Article.impact_score.is_not(None),
+                    Article.impact_score >= min_impact_score,
+                    Article.briefing_analyzed == False
                 )
             )
-            .order_by(desc(Article.processed_at))
+            .order_by(desc(Article.impact_score), desc(Article.processed_at))
         )
 
         articles = session.exec(statement).all()
@@ -377,6 +406,30 @@ def save_brief(
         session.commit()
         session.refresh(brief)  # Get the ID
         print(f"Saved brief [{feed_profile}] with ID: {brief.id}")
+
+
+        # Atualizar cada artigo usado
+        for article_id in contributing_article_ids:
+            statement = select(Article).where(Article.id == article_id)
+            article = session.exec(statement).first()
+
+            if article:
+                current_brief_ids = []
+                if article.brief_ids:
+                    try:
+                        current_brief_ids = json.loads(article.brief_ids)
+                    except json.JSONDecodeError:
+                        current_brief_ids = []
+                
+                if brief.id not in current_brief_ids:
+                    current_brief_ids.append(brief.id)
+                    
+                    article.brief_ids = json.dumps(current_brief_ids)
+                    session.add(article)
+
+        session.commit()
+
+
         return brief.id
 
 

@@ -122,7 +122,8 @@ def list_articles():
     total_articles = database.get_total_article_count(
         start_date=start_date, end_date=end_date,
         feed_profile=current_feed_profile if current_feed_profile else None,
-        search_term=current_search_term if current_search_term else None
+        search_term=current_search_term if current_search_term else None,
+        only_processed=True
     )
 
     # Fetch articles with ALL filters and sorting
@@ -130,7 +131,8 @@ def list_articles():
         page=page, per_page=per_page, sort_by=sort_by, direction=direction,
         start_date=start_date, end_date=end_date,
         feed_profile=current_feed_profile if current_feed_profile else None,
-        search_term=current_search_term if current_search_term else None
+        search_term=current_search_term if current_search_term else None,
+        only_processed=True
     )
 
     articles_data = [
