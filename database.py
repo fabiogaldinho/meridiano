@@ -319,6 +319,10 @@ def get_unprocessed_articles(
                     Article.raw_content.is_not(None),
                     Article.raw_content != "",
                     Article.feed_profile == feed_profile,
+                    or_(
+                        Article.initial_filter_score.is_(None),
+                        Article.initial_filter_score >= 3
+                    )
                 )
             )
             .order_by(desc(Article.fetched_at))
