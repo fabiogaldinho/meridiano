@@ -116,57 +116,114 @@ def get_deepseek_embedding(text, model=config.EMBEDDING_MODEL):
 def call_llm(prompt, model, system_prompt=None, max_tokens=2048, temperature=0.7):
     """Calls the Claude API for chat completion."""
 
-    if model.startswith("gpt"):
-        try:
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-            
-            response = openai_chat_client.chat.completions.create(
-                model=model,
-                messages=messages,
-                max_completion_tokens=max_tokens
-            )
-            return response.choices[0].message.content.strip()
-        
-        except Exception as e:
-            print(f"Error calling OpenAI API: {e}")
-            time.sleep(1)
-            return None
-        
+    max_retries = 3
+    base_wait_time = 2
 
-    elif model.startswith("claude"):
-        try:
-            if system_prompt:
-                response = client.messages.create(
-                    model=model,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    system=system_prompt,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-            else:
-                response = client.messages.create(
-                    model=model,
-                    max_tokens=2048,
-                    temperature=0.7,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-            return response.content[0].text.strip()
+    fallback_model = None
+    if model == "gpt-5-nano":
+        fallback_model = "gpt-5-mini"
+        print(f"  Fallback model configured: {fallback_model}")
+    
+    result = _attempt_llm_call(prompt, model, system_prompt, max_tokens, temperature, max_retries, base_wait_time)
+
+    if result is None and fallback_model:
+        print(f"  ⚠ All attempts with {model} failed. Trying fallback model {fallback_model}...")
         
-        except Exception as e:
-            print(f"Error calling Claude API: {e}")
-            time.sleep(1)
+        fallback_retries = 2
+        result = _attempt_llm_call(prompt, fallback_model, system_prompt, max_tokens, 
+                                   temperature, fallback_retries, base_wait_time)
+        
+        if result is not None:
+            print(f"  ✓ Fallback successful with {fallback_model}")
+        else:
+            print(f"  ✗ Fallback also failed with {fallback_model}")
+    
+
+    return result
+
+
+def _attempt_llm_call(prompt, model, system_prompt, max_tokens, temperature, max_retries, base_wait_time):
+    """
+    Tenta fazer uma chamada LLM com retries.
+    Esta é uma função auxiliar usada por call_llm.
+    
+    Retorna:
+        str: O conteúdo da resposta se bem-sucedido, None se falhou
+    """
+    
+    for attempt in range(max_retries):
+        if attempt > 0:
+            wait_time = base_wait_time * (2 ** (attempt - 1))  # Backoff exponencial
+            print(f"  Retry attempt {attempt + 1}/{max_retries} after {wait_time}s wait...")
+            time.sleep(wait_time)
+
+        if model.startswith("gpt"):
+            try:
+                messages = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": prompt})
+                
+                response = openai_chat_client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    max_completion_tokens=max_tokens
+                )
+
+                content = response.choices[0].message.content
+                result = content.strip() if content else None
+
+                if result:
+                    if attempt > 0:
+                        print(f"  ✓ Retry successful on attempt {attempt + 1}")
+                    return result
+
+                if attempt == max_retries - 1:
+                    print(f"  Empty response on attempt {attempt + 1}/{max_retries} with {model}")
+                else:
+                    print(f"  Empty response on attempt {attempt + 1}, will retry...")
+
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    print(f"  Error on attempt {attempt + 1}/{max_retries} with {model}: {e}")
+                else:
+                    print(f"  Error on attempt {attempt + 1}: {e}, will retry...")
+                time.sleep(1)
+            
+
+        elif model.startswith("claude"):
+            try:
+                if system_prompt:
+                    response = client.messages.create(
+                        model=model,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        system=system_prompt,
+                        messages=[
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                else:
+                    response = client.messages.create(
+                        model=model,
+                        max_tokens=2048,
+                        temperature=0.7,
+                        messages=[
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                return response.content[0].text.strip()
+            
+            except Exception as e:
+                print(f"Error calling Claude API: {e}")
+                time.sleep(1)
+                return None
+        
+        else:
+            print(f"Unknown model type: {model}")
             return None
     
-    else:
-        print(f"Unknown model type: {model}")
-        return None
+    return None
 
 
 def evaluate_rss_snippet_relevance(title, description, feed_profile, effective_config):
@@ -370,6 +427,84 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                 print(f"  Skipping article, failed to extract main content: {title}")
                 continue
 
+
+            MIN_CONTENT_LENGTH = 500
+            if len(raw_content) < MIN_CONTENT_LENGTH:
+                print(f"  FILTERED: Content too short ({len(raw_content)} chars, minimum {MIN_CONTENT_LENGTH})")
+                print(f"  Skipping: {title[:70]}...")
+                # Salva no banco com initial_filter_score baixo para não tentar de novo
+                database.add_article(
+                    url=url,
+                    title=title,
+                    published_date=published_date,
+                    feed_source=feed_source,
+                    raw_content=None,
+                    feed_profile=feed_profile,
+                    image_url=None,
+                    initial_filter_score=1
+                )
+                continue
+            
+            content_tail = raw_content[-50:].strip()
+            last_char = content_tail[-1] if content_tail else ''
+
+            if last_char.isalnum():
+                last_words = content_tail.split()[-3:]
+                last_fragment = ' '.join(last_words)
+
+                if len(last_words[-1]) < 3 and len(raw_content) < 3000:
+                    print(f"  WARNING: Article appears truncated (ends with: '...{content_tail[-30:]}')")
+                    print(f"  Content length: {len(raw_content)} chars")
+                    print(f"  Skipping: {title[:70]}...")
+                    
+                    database.add_article(
+                        url=url,
+                        title=title,
+                        published_date=published_date,
+                        feed_source=feed_source,
+                        raw_content=None,
+                        feed_profile=feed_profile,
+                        image_url=None,
+                        initial_filter_score=1
+                    )
+                    continue
+                
+                if len(raw_content) < 2000:
+                    print(f"  WARNING: Short article ending without punctuation")
+                    print(f"  Last fragment: '...{content_tail[-30:]}'")
+                    print(f"  Will attempt to process, but may be incomplete")
+
+            
+            paywall_indicators = [
+                'subscribe to continue reading',
+                'this content is for subscribers',
+                'sign up to read more',
+                'become a member to',
+                'subscribe for full access',
+                'continue reading for',
+            ]
+
+            content_lower = raw_content[-200:].lower()  # Últimos 200 chars em lowercase
+            for indicator in paywall_indicators:
+                if indicator in content_lower:
+                    print(f"  FILTERED: Paywall detected ('{indicator}')")
+                    print(f"  Skipping: {title[:70]}...")
+                    database.add_article(
+                        url=url,
+                        title=title,
+                        published_date=published_date,
+                        feed_source=feed_source,
+                        raw_content=None,
+                        feed_profile=feed_profile,
+                        image_url=None,
+                        initial_filter_score=1
+                    )
+                    continue
+
+            # Se chegou aqui, o conteúdo passou em todas as verificações
+            print(f"  ✓ Content validation passed ({len(raw_content)} chars)")
+                        
+
             # --- 3. Determine Final Image URL and Save ---
             final_image_url = rss_image_url if rss_image_url else og_image_url
             if final_image_url:
@@ -414,6 +549,39 @@ def process_articles(feed_profile, effective_config):
         summary = call_llm(summary_prompt, model=summary_model)
 
         if not summary:
+            print(f"WARNING: Failed to summarize article {article['id']} after all attempts")
+
+            with database.get_db_connection() as session:
+                stmt = select(database.Article).where(database.Article.id == article['id'])
+                article_record = session.exec(stmt).first()
+                if article_record:
+                    article_record.initial_filter_score = 1
+                    session.add(article_record)
+                    session.commit()
+            
+            debug_dir = "/app/data/failed_prompts"
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            debug_file = f"{debug_dir}/failed_summary_{timestamp}.txt"
+            
+            try:
+                with open(debug_file, 'w', encoding='utf-8') as f:
+                    f.write(f"Failed Prompt Debug Information\n")
+                    f.write(f"{'='*80}\n\n")
+                    f.write(f"Model attempted: {summary_model}\n")
+                    if summary_model == "gpt-5-nano":
+                        f.write(f"Fallback attempted: gpt-5-mini\n")
+                    f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+                    f.write(f"Article ID: {article['id']}\n")
+                    f.write(f"Article URL: {article['url']}\n")
+                    f.write(f"Prompt length: {len(summary_prompt)} characters\n")
+                    f.write(f"\n{'='*80}\n")
+                    f.write(f"FULL PROMPT:\n")
+                    f.write(f"{'='*80}\n\n")
+                    f.write(summary_prompt)
+                print(f"  Debug prompt saved to: {debug_file}")
+            except Exception as e:
+                print(f"  Failed to save debug prompt: {e}")
+
             print(f"Skipping article {article['id']} due to summarization error.")
             continue
 
@@ -789,6 +957,12 @@ if __name__ == "__main__":
         action='store_true',
         help='Run all stages sequentially (scrape, process, generate).\nThis is the default behavior if no specific stage argument is given.'
     )
+    parser.add_argument(
+        '--prepare',
+        dest='prepare',
+        action='store_true',
+        help='Run preparation stages only (scrape, process, rate) without generating brief.'
+    )
 
     args = parser.parse_args()
 
@@ -833,6 +1007,9 @@ if __name__ == "__main__":
     # Default to running all if no specific stage OR --all is provided
     should_run_all = args.run_all or not (args.scrape or args.process or args.generate or args.rate)
 
+    # Apenas scrapping e processamento
+    should_prepare = args.prepare
+
     print(f"\nMeridian Briefing Run [{feed_profile_name}] - {datetime.now()}")
     print("Initializing database...")
     database.init_db() # Initialize DB regardless of stage run
@@ -840,19 +1017,38 @@ if __name__ == "__main__":
     current_rss_feeds = getattr(effective_config, 'RSS_FEEDS', None)
 
     if should_run_all:
-        print("\n>>> Running ALL stages <<<")
-        if current_rss_feeds: scrape_articles(feed_profile_name, current_rss_feeds, effective_config)
-        else: print("Skipping scrape stage: No RSS_FEEDS found for profile.")
+        print("\n>>> Running ALL stages (including brief generation) <<<")
+        if current_rss_feeds: 
+            scrape_articles(feed_profile_name, current_rss_feeds, effective_config)
+        else: 
+            print("Skipping scrape stage: No RSS_FEEDS found for profile.")
+
         process_articles(feed_profile_name, effective_config)
         rate_articles(feed_profile_name, effective_config)
-        if current_rss_feeds: generate_brief(feed_profile_name, effective_config)
-        else: print("Skipping generate stage: No RSS_FEEDS found for profile.")
+
+        if current_rss_feeds: 
+            generate_brief(feed_profile_name, effective_config)
+        else: 
+            print("Skipping generate stage: No RSS_FEEDS found for profile.")
+            
+    elif should_prepare:
+        print("\n>>> Running PREPARATION stages only (scrape, process, rate) - NO brief generation <<<")
+        if current_rss_feeds:
+            scrape_articles(feed_profile_name, current_rss_feeds, effective_config)
+        else:
+            print("Skipping scrape stage: No RSS_FEEDS found for profile.")
+
+        process_articles(feed_profile_name, effective_config)
+        rate_articles(feed_profile_name, effective_config)
+        print("Preparation complete. Articles ready for briefing.")
+        
     else:
         if args.scrape:
             if current_rss_feeds:
-                 print(f"\n>>> Running ONLY Scrape Articles stage [{feed_profile_name}] <<<")
-                 scrape_articles(feed_profile_name, current_rss_feeds, effective_config)
-            else: print(f"Cannot run scrape stage: No RSS_FEEDS found for profile '{feed_profile_name}'.")
+                print(f"\n>>> Running ONLY Scrape Articles stage [{feed_profile_name}] <<<")
+                scrape_articles(feed_profile_name, current_rss_feeds, effective_config)
+            else: 
+                print(f"Cannot run scrape stage: No RSS_FEEDS found for profile '{feed_profile_name}'.")
         if args.process:
             print("\n>>> Running ONLY Process Articles stage <<<")
             process_articles(feed_profile_name, effective_config)
@@ -860,9 +1056,10 @@ if __name__ == "__main__":
             print("\n>>> Running ONLY Rate Articles stage <<<")
             rate_articles(feed_profile_name, effective_config)
         if args.generate:
-            if current_rss_feeds: # Check if feeds exist, as brief relies on articles from them
+            if current_rss_feeds:
                 print(f"\n>>> Running ONLY Generate Brief stage [{feed_profile_name}] <<<")
                 generate_brief(feed_profile_name, effective_config)
-            else: print(f"Cannot run generate stage: No RSS_FEEDS found for profile '{feed_profile_name}'.")
+            else: 
+                print(f"Cannot run generate stage: No RSS_FEEDS found for profile '{feed_profile_name}'.")
 
     print(f"\nRun Finished [{feed_profile_name}] - {datetime.now()}")
