@@ -61,8 +61,8 @@ MIN_IMPACT_SCORE_FOR_BRIEFING = 5
 # Model for summarization and analysis (check Deepseek docs for latest models)
 #DEEPSEEK_CHAT_MODEL = "deepseek-chat"
 CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
-SUMMARY_MODEL = "gpt-5-nano"
-RATING_MODEL = "gpt-5-nano"
+SUMMARY_MODEL = "gpt-5-mini"
+RATING_MODEL = "gpt-5-mini"
 CLUSTER_MODEL = "gpt-5-mini"
 BRIEF_MODEL = "claude-sonnet-4-5-20250929"
 FILTER_MODEL = "gpt-4o-mini"

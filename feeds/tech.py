@@ -18,7 +18,45 @@ RSS_FEEDS = [
   "https://gizmodo.com/feed"
 ]
 
-pt_br = "Responda em português brasileiro."
+# FILTRO INICIAL PARA DECIDIR QUAL NOTÍCIA IMPORTAR
+MIN_INITIAL_FILTER_SCORE = 4
+
+PROMPT_INITIAL_FILTER = """Avalie rapidamente se este artigo de tecnologia vale processar.
+
+Título: {title}
+Descrição: {description}
+
+CLARAMENTE RELEVANTE (score 4-5):
+- Regulação governamental de tech, antitruste, leis de privacidade
+- Condições de trabalho: demissões em massa, crunch, sindicalização
+- Vigilância, privacidade, uso político de plataformas
+- Segurança: vulnerabilidades críticas, ataques, vazamentos de dados
+- Pesquisa científica em IA, computação, criptografia
+- Aquisições que concentram poder, mudanças estruturais na indústria
+- Conteúdo de mídia sobre práticas corporativas
+
+CLARAMENTE IRRELEVANTE (score 1-2):
+- Lançamentos de produtos de consumo (novo iPhone, atualização de app)
+- Valoração de startups, rodadas de investimento, IPOs
+- Reviews de gadgets e dispositivos
+- Tutoriais, dicas de uso, guias de compra
+- Rumores sobre produtos futuros
+- Marketing disfarçado de notícia
+- Movimentação de executivos sem contexto político
+
+PODE SER RELEVANTE (score 3):
+- Produto novo mas com implicações de privacidade/segurança
+- Mudanças em plataformas grandes que afetam usuários
+- Pesquisa científica em áreas menos críticas
+- Negócios tech com ângulo trabalhista não claro no título
+
+ATENÇÃO ESPECIAL - sempre score 4+:
+- Palavras-chave: "regulação", "antitruste", "demissão", "sindicato", "vazamento", "vulnerabilidade", "privacidade", "vigilância"
+
+Score de 1 a 5. Seja MUITO crítico com score 1-2 para lançamentos de produto e valorações. Na dúvida entre 2 e 3, dê 3.
+
+Responda APENAS com o número (1-5)."""
+
 
 # Used in process_articles (operates globally, so uses default)
 PROMPT_ARTICLE_SUMMARY = """Extraia os fatos principais desta notícia de tecnologia em 2-4 frases diretas.
@@ -169,43 +207,3 @@ VALORIZE mencionar:
 - Alternativas abertas, cooperativas, públicas
 
 Máximo 600 palavras. Responda em português brasileiro."""
-
-
-# FILTRO INICIAL PARA DECIDIR QUAL NOTÍCIA IMPORTAR
-MIN_INITIAL_FILTER_SCORE = 4
-
-PROMPT_INITIAL_FILTER = """Avalie rapidamente se este artigo de tecnologia vale processar.
-
-Título: {title}
-Descrição: {description}
-
-CLARAMENTE RELEVANTE (score 4-5):
-- Regulação governamental de tech, antitruste, leis de privacidade
-- Condições de trabalho: demissões em massa, crunch, sindicalização
-- Vigilância, privacidade, uso político de plataformas
-- Segurança: vulnerabilidades críticas, ataques, vazamentos de dados
-- Pesquisa científica em IA, computação, criptografia
-- Aquisições que concentram poder, mudanças estruturais na indústria
-- Conteúdo de mídia sobre práticas corporativas
-
-CLARAMENTE IRRELEVANTE (score 1-2):
-- Lançamentos de produtos de consumo (novo iPhone, atualização de app)
-- Valoração de startups, rodadas de investimento, IPOs
-- Reviews de gadgets e dispositivos
-- Tutoriais, dicas de uso, guias de compra
-- Rumores sobre produtos futuros
-- Marketing disfarçado de notícia
-- Movimentação de executivos sem contexto político
-
-PODE SER RELEVANTE (score 3):
-- Produto novo mas com implicações de privacidade/segurança
-- Mudanças em plataformas grandes que afetam usuários
-- Pesquisa científica em áreas menos críticas
-- Negócios tech com ângulo trabalhista não claro no título
-
-ATENÇÃO ESPECIAL - sempre score 4+:
-- Palavras-chave: "regulação", "antitruste", "demissão", "sindicato", "vazamento", "vulnerabilidade", "privacidade", "vigilância"
-
-Score de 1 a 5. Seja MUITO crítico com score 1-2 para lançamentos de produto e valorações. Na dúvida entre 2 e 3, dê 3.
-
-Responda APENAS com o número (1-5)."""
