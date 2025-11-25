@@ -81,7 +81,6 @@ def send_telegram_notification(message, parse_mode='HTML'):
         print(f"Warning: Failed to send Telegram notification: {e}")
 
 
-# Use the correct client for Deepseek, not OpenAI
 client = anthropic.Anthropic(api_key=API_KEY)
 embedding_client = openai.Client(api_key=OPENAI_API_KEY)
 openai_chat_client = openai.Client(api_key=OPENAI_API_KEY)
@@ -333,7 +332,24 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
         if feed.bozo: print(f"Warning: Potential issue parsing feed {feed_url}: {feed.bozo_exception}")
 
         for entry in feed.entries:
+            replaces = [
+                ("/", "%2F"),
+                (":", "%3A"),
+                (" ", "%20"),
+                ("?", "%3F"),
+                ("&", "%26"),
+                ("=", "%3D"),
+                ("#", "%23")
+            ]
+
             url = entry.get('link')
+
+            for old, new in replaces:
+                url = url.replace(old, new)
+            
+            url = "https://marreta.galdinho.news/p/" + url
+
+
             title = entry.get('title', 'No Title')
             description = entry.get('description', '') or entry.get('summary', '')
             published_parsed = entry.get('published_parsed')
