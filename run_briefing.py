@@ -343,11 +343,12 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
             ]
 
             url = entry.get('link')
+            url_encoded = url.copy()
 
             for old, new in replaces:
-                url = url.replace(old, new)
+                url_encoded = url_encoded.replace(old, new)
             
-            url = "https://marreta.galdinho.news/p/" + url
+            url_encoded = "https://marreta.galdinho.news/p/" + url_encoded
 
 
             title = entry.get('title', 'No Title')
@@ -396,7 +397,8 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                     raw_content=None,
                     feed_profile=feed_profile,
                     image_url=None,
-                    initial_filter_score=filter_score
+                    initial_filter_score=filter_score,
+                    url_encoded=url_encoded
                 )
 
                 continue
@@ -434,7 +436,7 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
 
             # --- 2. Fetch Article Content & OG Image ---
             print(f"  Fetching article content and OG image...")
-            fetch_result = fetch_article_content_and_og_image(url)
+            fetch_result, marreta = fetch_article_content_and_og_image(url, url_encoded)
             raw_content = fetch_result['content']
             og_image_url = fetch_result['og_image']
             # --- End Fetch ---
@@ -457,7 +459,8 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                     raw_content=None,
                     feed_profile=feed_profile,
                     image_url=None,
-                    initial_filter_score=1
+                    initial_filter_score=1,
+                    marreta=marreta
                 )
                 continue
             
@@ -481,7 +484,8 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                         raw_content=None,
                         feed_profile=feed_profile,
                         image_url=None,
-                        initial_filter_score=1
+                        initial_filter_score=1,
+                        marreta=marreta
                     )
                     continue
                 
@@ -513,7 +517,8 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                         raw_content=None,
                         feed_profile=feed_profile,
                         image_url=None,
-                        initial_filter_score=1
+                        initial_filter_score=1,
+                        marreta=marreta
                     )
                     continue
 
@@ -532,7 +537,9 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                 url, title, published_date, feed_source, raw_content,
                 feed_profile,
                 final_image_url,
-                initial_filter_score=filter_score
+                initial_filter_score=filter_score,
+                url_encoded=url_encoded,
+                marreta=marreta
             )
             if article_id: new_articles_count += 1
             time.sleep(0.5) # Be polite
@@ -712,6 +719,8 @@ def append_article_references(brief_markdown, articles, feed_profile):
         source = article.get('feed_source', 'Fonte desconhecida')
         impact = article.get('impact_score')
         published = article.get('published_date')
+        url_encoded = article.get('url_encoded', '#')
+        marreta = article.get('marreta')
         
         date_str = ""
         if published:
@@ -725,7 +734,12 @@ def append_article_references(brief_markdown, articles, feed_profile):
             else:
                 date_str = published.strftime('%d/%m/%Y')
         
-        ref_line = f"{i}. **[{title}]({url})**"
+        if (marreta):
+            #ref_line = f"{i}. **[{title}]({url_encoded})**"
+            ref_line = f'{i}. <strong><a href="{url_encoded}" target="_blank" rel="noopener noreferrer">{title}</a></strong>'
+        else:
+            #ref_line = f"{i}. **[{title}]({url})**"
+            ref_line = f'{i}. <strong><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></strong>'
         
         metadata_parts = []
         if source:
