@@ -18,8 +18,10 @@ RSS_FEEDS = [
   "https://gizmodo.com/feed"
 ]
 
+TELEGRAM_CHAT_ID = [574021995, 336581665]
+
 # FILTRO INICIAL PARA DECIDIR QUAL NOTÍCIA IMPORTAR
-MIN_INITIAL_FILTER_SCORE = 4
+MIN_INITIAL_FILTER_SCORE = 3
 
 PROMPT_INITIAL_FILTER = """Avalie rapidamente se este artigo de tecnologia vale processar.
 

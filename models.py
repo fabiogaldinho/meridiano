@@ -61,8 +61,8 @@ class Article(SQLModel, table=True):
         description="Initial relevance score (1-5) from RSS snippet analysis"
     )
     briefing_analyzed: bool = Field(default=False, index=True),
-    url_encoded: str = Field(unique=True, index=True),
-    marreta: bool = Field(default=False, index=True)
+    url_encoding: str = Field(unique=True, index=True),
+    marreta: Optional[bool] = Field(default=False, index=True)
 
 
 class Brief(SQLModel, table=True):

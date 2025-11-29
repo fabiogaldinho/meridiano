@@ -75,9 +75,8 @@ with get_session() as session:
             print(f'Erro ao tentar desaplicar URL encoding: {e}\n')
         
         print("URL encoding desaplicado com sucesso!\n")
-    
 
-    else:
+
         try:
             print("Adicionando nova coluna 'marreta'!")
 
@@ -89,3 +88,39 @@ with get_session() as session:
             print(f'Erro ao tentar adicionar a nova coluna marreita: {e}\n')
         
         print("Nova coluna 'marreta' adicionada com sucesso!\n")
+    
+        try:
+            print("Desaplicando URL encoding.")
+            col_url = Article.url
+            col_url = func.replace(col_url, "https://marreta.galdinho.news/p/", "")
+            
+            stmt = update(Article).values(url=col_url)
+            session.exec(stmt)
+            session.commit()
+
+        except Exception as e:
+            print(f'Erro ao tentar desaplicar URL encoding: {e}\n')
+        
+        print("URL encoding desaplicado com sucesso!\n")
+
+
+        try:
+            print("\nVerificando colunas da tabela!")
+
+            result = session.exec(text('SELECT * FROM articles ORDER BY id DESC LIMIT 1;'))
+
+            for row in result:
+                print(row)
+        
+        except Exception as e:
+            print(f'Erro ao tentar adicionar a nova coluna marreita: {e}\n')
+
+
+    else:
+        try:
+            result = session.exec(text('PRAGMA table_info(articles);'))
+            for row in result:
+                print(row)
+
+        except Exception as e:
+            print(f'Erro ao tentar adicionar a nova coluna marreita: {e}\n')

@@ -32,6 +32,7 @@ from sqlmodel import select, func, and_
 load_dotenv()
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 if not API_KEY:
     raise ValueError("ANTHROPIC_API_KEY not found in .env file")
@@ -39,8 +40,12 @@ if not API_KEY:
 if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY not found in .env file")
 
+client = anthropic.Anthropic(api_key=API_KEY)
+embedding_client = openai.Client(api_key=OPENAI_API_KEY)
+openai_chat_client = openai.Client(api_key=OPENAI_API_KEY)
 
-def send_telegram_notification(message, parse_mode='HTML'):
+
+def send_telegram_notification(chat_id, message, parse_mode='HTML'):
     """
     Envia notificação push via Telegram bot.
     
@@ -52,7 +57,6 @@ def send_telegram_notification(message, parse_mode='HTML'):
     ou se houver erro ao enviar, para não quebrar o pipeline principal.
     """
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-    chat_id = os.getenv('TELEGRAM_CHAT_ID')
     
     if not bot_token or not chat_id:
         return
@@ -79,11 +83,6 @@ def send_telegram_notification(message, parse_mode='HTML'):
             
     except Exception as e:
         print(f"Warning: Failed to send Telegram notification: {e}")
-
-
-client = anthropic.Anthropic(api_key=API_KEY)
-embedding_client = openai.Client(api_key=OPENAI_API_KEY)
-openai_chat_client = openai.Client(api_key=OPENAI_API_KEY)
 
 
 def get_deepseek_embedding(text, model=config.EMBEDDING_MODEL):
@@ -343,12 +342,12 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
             ]
 
             url = entry.get('link')
-            url_encoded = url.copy()
+            url_encoding = url
 
             for old, new in replaces:
-                url_encoded = url_encoded.replace(old, new)
+                url_encoding = url_encoding.replace(old, new)
             
-            url_encoded = "https://marreta.galdinho.news/p/" + url_encoded
+            url_encoding = "https://marreta.galdinho.news/p/" + url_encoding
 
 
             title = entry.get('title', 'No Title')
@@ -396,15 +395,14 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                     feed_source=feed_source,
                     raw_content=None,
                     feed_profile=feed_profile,
+                    url_encoding=url_encoding,
                     image_url=None,
-                    initial_filter_score=filter_score,
-                    url_encoded=url_encoded
+                    initial_filter_score=filter_score
                 )
 
                 continue
 
             print(f"  PASSED filter (score {filter_score} >= {min_filter_score})")
-
 
 
             print(f"Processing new entry: {title} ({url})")
@@ -436,7 +434,7 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
 
             # --- 2. Fetch Article Content & OG Image ---
             print(f"  Fetching article content and OG image...")
-            fetch_result, marreta = fetch_article_content_and_og_image(url, url_encoded)
+            fetch_result, marreta = fetch_article_content_and_og_image(url, url_encoding)
             raw_content = fetch_result['content']
             og_image_url = fetch_result['og_image']
             # --- End Fetch ---
@@ -444,7 +442,6 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
             if not raw_content:
                 print(f"  Skipping article, failed to extract main content: {title}")
                 continue
-
 
             MIN_CONTENT_LENGTH = 500
             if len(raw_content) < MIN_CONTENT_LENGTH:
@@ -458,12 +455,14 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                     feed_source=feed_source,
                     raw_content=None,
                     feed_profile=feed_profile,
+                    url_encoding=url_encoding,
                     image_url=None,
                     initial_filter_score=1,
                     marreta=marreta
                 )
                 continue
-            
+
+
             content_tail = raw_content[-50:].strip()
             last_char = content_tail[-1] if content_tail else ''
 
@@ -483,11 +482,13 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                         feed_source=feed_source,
                         raw_content=None,
                         feed_profile=feed_profile,
+                        url_encoding=url_encoding,
                         image_url=None,
                         initial_filter_score=1,
                         marreta=marreta
                     )
                     continue
+
                 
                 if len(raw_content) < 2000:
                     print(f"  WARNING: Short article ending without punctuation")
@@ -516,11 +517,13 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                         feed_source=feed_source,
                         raw_content=None,
                         feed_profile=feed_profile,
+                        url_encoding=url_encoding,
                         image_url=None,
                         initial_filter_score=1,
                         marreta=marreta
                     )
                     continue
+
 
             # Se chegou aqui, o conteúdo passou em todas as verificações
             print(f"  ✓ Content validation passed ({len(raw_content)} chars)")
@@ -536,11 +539,10 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
             article_id = database.add_article(
                 url, title, published_date, feed_source, raw_content,
                 feed_profile,
+                url_encoding,
                 final_image_url,
                 initial_filter_score=filter_score,
-                url_encoded=url_encoded,
-                marreta=marreta
-            )
+                marreta=marreta)
             if article_id: new_articles_count += 1
             time.sleep(0.5) # Be polite
 
@@ -568,7 +570,6 @@ def process_articles(feed_profile, effective_config):
         summary_prompt = summary_prompt_template.format(
             article_content=article['raw_content'][:4000] # Limit context
         )
-        #summary = call_deepseek_chat(summary_prompt, model=chat_model)
         summary = call_llm(summary_prompt, model=summary_model)
 
         if not summary:
@@ -719,7 +720,7 @@ def append_article_references(brief_markdown, articles, feed_profile):
         source = article.get('feed_source', 'Fonte desconhecida')
         impact = article.get('impact_score')
         published = article.get('published_date')
-        url_encoded = article.get('url_encoded', '#')
+        url_encoding = article.get('url_encoding', '#')
         marreta = article.get('marreta')
         
         date_str = ""
@@ -735,10 +736,8 @@ def append_article_references(brief_markdown, articles, feed_profile):
                 date_str = published.strftime('%d/%m/%Y')
         
         if (marreta):
-            #ref_line = f"{i}. **[{title}]({url_encoded})**"
-            ref_line = f'{i}. <strong><a href="{url_encoded}" target="_blank" rel="noopener noreferrer">{title}</a></strong>'
+            ref_line = f'{i}. <strong><a href="{url_encoding}" target="_blank" rel="noopener noreferrer">{title}</a></strong>'
         else:
-            #ref_line = f"{i}. **[{title}]({url})**"
             ref_line = f'{i}. <strong><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></strong>'
         
         metadata_parts = []
@@ -931,7 +930,7 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
 
 
         notification_message = f"""
-        <b>📰 Novo Briefing Meridiano</b>
+        <b>📰 Novo Briefing Disponível</b>
 
         <b>Feed:</b> {feed_profile}
         <b>Artigos:</b> {len(articles)}
@@ -939,7 +938,10 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
 
         Acesse em: https://galdinho.news
         """
-        send_telegram_notification(notification_message)
+
+        chat_ids = getattr(effective_config, 'TELEGRAM_CHAT_ID', TELEGRAM_CHAT_ID)
+        for chatid in chat_ids:
+            send_telegram_notification(chatid, notification_message)
 
         print(f"--- Brief Generation Finished Successfully [{feed_profile}] ---")
     else:

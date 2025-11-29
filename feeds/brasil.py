@@ -15,7 +15,7 @@ RSS_FEEDS = [
      "https://operamundi.uol.com.br/feed/", # Opera Mundi
 ]
 
-pt_br = " Responda em português brasileiro."
+TELEGRAM_CHAT_ID = [574021995, 336581665]
 
 
 # Used in process_articles (operates globally, so uses default)
