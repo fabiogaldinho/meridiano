@@ -16,7 +16,7 @@ RSS_FEEDS = [
      "https://www.videogameschronicle.com/feed/"
 ]
 
-pt_br = " Responda em português brasileiro."
+TELEGRAM_CHAT_ID = [574021995, 336581665]
 
 # Used in process_articles (operates globally, so uses default)
 PROMPT_ARTICLE_SUMMARY = """Extraia as informações principais deste artigo sobre jogos em 2-4 frases diretas.

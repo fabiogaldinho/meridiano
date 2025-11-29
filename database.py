@@ -96,6 +96,11 @@ def _article_to_dict(article: Article) -> Dict[str, Any]:
             "impact_score",
             "image_url",
             "feed_profile",
+            "brief_ids",
+            "initial_filter_score",
+            "briefing_analyzed",
+            "url_encoding",
+            "marreta"
         }
     )
 
@@ -265,8 +270,11 @@ def add_article(
     feed_source: str,
     raw_content: str,
     feed_profile: str,
+    url_encoding: str,
     image_url: Optional[str] = None,
     initial_filter_score: Optional[int] = None,
+    marreta: bool = False,
+    briefing_analyzed: bool = False
 ) -> Optional[int]:
     """Adds a new article with optional image URL."""
     with get_session() as session:
@@ -294,7 +302,10 @@ def add_article(
                 image_url=image_url,
                 feed_profile=feed_profile,
                 fetched_at=datetime.now(),
-                initial_filter_score=initial_filter_score
+                initial_filter_score=initial_filter_score,
+                url_encoding=url_encoding,
+                marreta=marreta,
+                briefing_analyzed=briefing_analyzed
             )
             session.add(article)
             session.commit()

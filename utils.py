@@ -4,6 +4,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import logging
 from urllib.parse import urljoin
+from models import Article, get_session
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,7 +27,7 @@ def format_datetime(value, format='%Y-%m-%d %H:%M'):
         return value.strftime(format)
     return value
 
-def fetch_article_content_and_og_image(url):
+def fetch_article_content_and_og_image(url, url_encoded):
     """
     Fetches HTML, extracts main content using Trafilatura,
     and extracts the og:image URL using BeautifulSoup.
@@ -36,6 +37,7 @@ def fetch_article_content_and_og_image(url):
     """
     content = None
     og_image = None
+    marreta = False
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0',
@@ -51,9 +53,31 @@ def fetch_article_content_and_og_image(url):
             "Cache-Control": "max-age=0",
             "referer": "https://www.google.com"
         }
-        response = requests.get(url, headers=headers, timeout=20) # Increased timeout slightly
-        response.raise_for_status()
-        html_content = response.text
+
+        print(f"  Tentando extrair página com Marreta...")
+        try:
+            response = requests.get(url_encoded, headers=headers, timeout=20)
+            response.raise_for_status()
+            html_content = response.text
+
+            if '<div class="brand">' in html_content and 'Galdinho News' in html_content:
+                print(f"  Marreta retornou homepage, tentando URL original...")
+                # Fallback: tentar URL original
+                response = requests.get(url, headers=headers, timeout=20)
+                response.raise_for_status()
+                html_content = response.text
+                marreta = False
+            else:
+                print(f"  Marreta funcionou...")
+                marreta = True
+        
+        except requests.exceptions.RequestException as marreta_error:
+            # FALLBACK: Se Marreta falhou, tenta URL original
+            print(f"  Marreta falhou ({marreta_error}), tentando URL original...")
+            response = requests.get(url, headers=headers, timeout=20)
+            response.raise_for_status()
+            html_content = response.text
+            marreta = False
 
         # 1. Extract text content
         content = trafilatura.extract(html_content, include_comments=False, include_tables=False)
@@ -66,16 +90,16 @@ def fetch_article_content_and_og_image(url):
             # Optionally resolve relative URLs - less common for og:image but possible
             og_image = urljoin(url, og_image)
 
-        return {'content': content, 'og_image': og_image}
+        return {'content': content, 'og_image': og_image}, marreta
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching {url}: {e}")
-        return {'content': None, 'og_image': None}
+        return {'content': None, 'og_image': None}, marreta
     except Exception as e:
         # Catch potential BeautifulSoup errors or others
         print(f"Error processing content/og:image from {url}: {e}")
         # Still return content if it was extracted before the error
-        return {'content': content, 'og_image': None}
+        return {'content': content, 'og_image': None}, marreta
 
 def scrape_single_article_details(article_url):
     """
