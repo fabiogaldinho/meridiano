@@ -928,19 +928,19 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
 
         print(f"Brief ID {brief_id} added to included articles")
 
-
-        notification_message = f"""
-        <b>📰 Novo Briefing Disponível</b>
-
-        <b>Feed:</b> {feed_profile}
-        <b>Artigos:</b> {len(articles)}
-        <b>ID:</b> {brief_id}
-
-        Acesse em: https://galdinho.news
-        """
-
         chat_ids = getattr(effective_config, 'TELEGRAM_CHAT_ID', TELEGRAM_CHAT_ID)
-        for chatid in chat_ids:
+        for chatid, chaturl in chat_ids.items():
+            notification_message = f"""
+            <b>📰 Novo Briefing Disponível</b>
+
+            <b>Feed:</b> {feed_profile}
+            <b>Artigos:</b> {len(articles)}
+            <b>ID:</b> {brief_id}
+
+            Acesse em: {chaturl}
+            """
+
+
             send_telegram_notification(chatid, notification_message)
 
         print(f"--- Brief Generation Finished Successfully [{feed_profile}] ---")

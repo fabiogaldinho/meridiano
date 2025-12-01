@@ -15,7 +15,10 @@ RSS_FEEDS = [
      "https://operamundi.uol.com.br/feed/", # Opera Mundi
 ]
 
-TELEGRAM_CHAT_ID = [574021995, 336581665]
+TELEGRAM_CHAT_ID = {
+   574021995: 'https://galdinho.news',
+   336581665: 'https://bruzinha.galdinho.news'
+}
 
 
 # Used in process_articles (operates globally, so uses default)

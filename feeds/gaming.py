@@ -16,7 +16,11 @@ RSS_FEEDS = [
      "https://www.videogameschronicle.com/feed/"
 ]
 
-TELEGRAM_CHAT_ID = [574021995, 336581665]
+TELEGRAM_CHAT_ID = {
+   574021995: 'https://galdinho.news',
+   336581665: 'https://bruzinha.galdinho.news',
+   901434795: 'https://rain.galdinho.news'
+}
 
 # Used in process_articles (operates globally, so uses default)
 PROMPT_ARTICLE_SUMMARY = """Extraia as informações principais deste artigo sobre jogos em 2-4 frases diretas.

@@ -18,7 +18,10 @@ RSS_FEEDS = [
   "https://gizmodo.com/feed"
 ]
 
-TELEGRAM_CHAT_ID = [574021995, 336581665]
+TELEGRAM_CHAT_ID = {
+  574021995: 'https://galdinho.news',
+  336581665: 'https://bruzinha.galdinho.news'
+}
 
 # FILTRO INICIAL PARA DECIDIR QUAL NOTÍCIA IMPORTAR
 MIN_INITIAL_FILTER_SCORE = 3
