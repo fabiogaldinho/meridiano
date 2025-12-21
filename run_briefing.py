@@ -775,9 +775,11 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
         print("Skipping brief generation - all recent articles already used.")
         return
     
-    if len(articles) < config.MIN_ARTICLES_FOR_BRIEFING:
+    min_articles = getattr(effective_config, 'MIN_ARTICLES_FOR_BRIEFING', config.MIN_ARTICLES_FOR_BRIEFING)
+
+    if len(articles) < min_articles:
         print(f"Not enough NEW articles ({len(articles)}) for profile '{feed_profile}'.")
-        print(f"Minimum required: {config.MIN_ARTICLES_FOR_BRIEFING}.")
+        print(f"Minimum required: {min_articles}.")
         print("Skipping brief generation.")
         return
 
@@ -797,8 +799,8 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
         summaries = [summaries[i] for i in valid_indices]
         # embeddings are already filtered
 
-    if len(embeddings) < config.MIN_ARTICLES_FOR_BRIEFING:
-         print(f"Not enough articles ({len(embeddings)}) with embeddings to cluster. Min required: {config.MIN_ARTICLES_FOR_BRIEFING}.")
+    if len(embeddings) < min_articles:
+         print(f"Not enough articles ({len(embeddings)}) with embeddings to cluster. Min required: {min_articles}.")
          return
 
     embedding_matrix = np.array(embeddings)

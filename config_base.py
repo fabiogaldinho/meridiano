@@ -76,7 +76,7 @@ N_CLUSTERS = 10  # Example, adjust as needed
 MIN_INITIAL_FILTER_SCORE = 3
 
 # Minimum number of articles required to attempt clustering/briefing
-MIN_ARTICLES_FOR_BRIEFING = 20
+MIN_ARTICLES_FOR_BRIEFING = 15
 
 ARTICLES_PER_PAGE = 15
 

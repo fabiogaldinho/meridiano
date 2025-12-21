@@ -81,10 +81,12 @@ Ignore ou minimize:
 - Opinões de CEOs e executivos (a menos que politicamente relevantes)
 - Marketing corporativo disfarçado de notícia
 
-Formato:
-- Quem: empresas, governos, trabalhadores, pesquisadores envolvidos
-- O quê: ações concretas, mudanças, descobertas
-- Impacto material: quem ganha, quem perde, o que muda no mundo real
+Foque em:
+- Quem: pessoas, organizações, instituições envolvidas
+- O quê: ações concretas, eventos, anúncios
+- Quando: contexto temporal (se relevante)
+- Onde: localização geográfica (se relevante)
+- Consequências imediatas: o que mudou ou vai mudar
 
 Artigo:
 {article_content}

@@ -18,14 +18,14 @@ RSS_FEEDS = [
 
 TELEGRAM_CHAT_ID = {
    574021995: 'https://galdinho.news',
-   336581665: 'https://bruzinha.galdinho.news',
-   901434795: 'https://rain.galdinho.news'
+   336581665: 'https://bruzinha.galdinho.news'
 }
 
 # Used in process_articles (operates globally, so uses default)
 PROMPT_ARTICLE_SUMMARY = """Extraia as informações principais deste artigo sobre jogos em 2-4 frases diretas.
 
-TIPO DE CONTEÚDO - identifique primeiro:
+TIPO DE CONTEÚDO
+Identifique primeiro (não precisa apresentar isto no resumo):
 - Review/crítica de jogo específico
 - Notícia sobre lançamento/anúncio
 - Análise da indústria (condições de trabalho, tendências, negócios)
