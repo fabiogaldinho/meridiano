@@ -14,8 +14,6 @@ import anthropic
 import openai
 import argparse
 
-from urllib.parse import urljoin
-
 from utils import fetch_article_content_and_og_image
 
 try:
@@ -25,8 +23,9 @@ except ImportError:
     exit(1)
 
 import database
-from models import Article, get_session
-from sqlmodel import select, func, and_
+from models import Article
+from db import get_db_connection()
+from sqlmodel import select, func
 
 # --- Setup ---
 load_dotenv()
@@ -210,7 +209,7 @@ def _attempt_llm_call(prompt, model, system_prompt, max_tokens, temperature, max
                             {"role": "user", "content": prompt}
                         ]
                     )
-                return response.content[0].text.strip()
+                return response.content[0].text.strip()                                         # type: ignore
             
             except Exception as e:
                 print(f"Error calling Claude API: {e}")
@@ -302,7 +301,7 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
     print(f"\n--- Starting Article Scraping [{feed_profile}] ---")
 
 
-    with get_session() as session:
+    with get_db_connection() as session:
         existing_count = session.exec(
             select(func.count(Article.id)).where(Article.feed_profile == feed_profile)
         ).one()
@@ -345,25 +344,25 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
             url_encoding = url
 
             for old, new in replaces:
-                url_encoding = url_encoding.replace(old, new)
+                url_encoding = url_encoding.replace(old, new)                                       # type: ignore
             
-            url_encoding = "https://marreta.galdinho.news/p/" + url_encoding
+            url_encoding = "https://marreta.galdinho.news/p/" + url_encoding                        # type: ignore
 
 
             title = entry.get('title', 'No Title')
             description = entry.get('description', '') or entry.get('summary', '')
             published_parsed = entry.get('published_parsed')
-            published_date = datetime(*published_parsed[:6]) if published_parsed else datetime.now()
-            feed_source = feed.feed.get('title', feed_url)
+            published_date = datetime(*published_parsed[:6]) if published_parsed else datetime.now()                    # type: ignore
+            feed_source = feed.feed.get('title', feed_url)                                                              # type: ignore
 
             if not url: continue
 
             if published_date < cutoff_date:
-                print(f"  Skipping old article from {published_date.strftime('%Y-%m-%d')}: {title[:60]}...")
+                print(f"  Skipping old article from {published_date.strftime('%Y-%m-%d')}: {title[:60]}...")            # type: ignore
                 continue
 
             # --- Check if article exists ---
-            with get_session() as session:
+            with get_db_connection() as session:
                 exists = session.exec(select(Article).where(Article.url == url)).first()
             if exists: continue
             # --- End Check ---
@@ -898,7 +897,7 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
         brief_id = database.save_brief(final_brief_md, article_ids, feed_profile)
 
         print(f"\nMarking all {len(articles)} considered articles as analyzed...")
-        with get_session() as session:
+        with get_db_connection() as session:
             for article_dict in articles:
                 article = session.exec(
                     select(Article).where(Article.id == article_dict['id'])
@@ -913,7 +912,7 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
 
 
         print(f"Adding brief_id to {len(article_ids)} articles included in briefing...")
-        with get_session() as session:
+        with get_db_connection() as session:
             for art_id in article_ids:
                 article = session.exec(
                     select(Article).where(Article.id == art_id)
