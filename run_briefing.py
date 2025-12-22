@@ -24,7 +24,7 @@ except ImportError:
 
 import database
 from models import Article
-from db import get_db_connection()
+from db import get_db_connection
 from sqlmodel import select, func
 
 # --- Setup ---
