@@ -888,11 +888,11 @@ def generate_brief(feed_profile, effective_config): # Added feed_profile param
 
     if final_brief_md:
 
-        final_brief_md = append_article_references(
-            final_brief_md, 
-            articles,
-            feed_profile
-        )
+        #final_brief_md = append_article_references(
+        #    final_brief_md, 
+        #    articles,
+        #    feed_profile
+        #)
 
         brief_id = database.save_brief(final_brief_md, article_ids, feed_profile)
 

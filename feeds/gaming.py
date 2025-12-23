@@ -16,9 +16,14 @@ RSS_FEEDS = [
      "https://www.videogameschronicle.com/feed/"
 ]
 
+DISPLAY_NAME = "Gaming"
+
+TEXT_COLOR = "text-purple-800"
+
 TELEGRAM_CHAT_ID = {
    574021995: 'https://galdinho.news',
-   336581665: 'https://bruzinha.galdinho.news'
+   336581665: 'https://bruzinha.galdinho.news',
+   169393478: 'https://bruzinha.galdinho.news' #Juninho
 }
 
 # Used in process_articles (operates globally, so uses default)

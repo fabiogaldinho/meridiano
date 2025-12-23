@@ -1,21 +1,29 @@
 # simple-meridian/app.py
 
-from flask import Flask, render_template, request, abort, flash, redirect, url_for
+from flask import Flask, render_template, request, abort, flash, redirect, url_for, send_from_directory
+from flask_cors import CORS
 from markupsafe import Markup
-import markdown
+import markdown, math, json, os
 from datetime import datetime, timedelta, date
-import math
-import json
-import os
 
 import config_base as config # Use base config for app settings
+from db import create_db_and_tables, get_db_connection
+from models import Article
 import database # Import our database functions
 from sqlmodel import select
 
 from utils import scrape_single_article_details, format_datetime
+from api import api_bp
 
-app = Flask(__name__)
+
+app = Flask(__name__,
+            static_folder='frontend/dist',
+            static_url_path='')
+
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "a_default_secret_key_for_development_only")
+app.register_blueprint(api_bp)
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173"]}})
+
 
 # Register the filter with Jinja
 app.jinja_env.filters['datetimeformat'] = format_datetime
@@ -146,7 +154,7 @@ def list_articles():
     if page > total_pages and total_pages > 0:
         # Optional: redirect to last valid page if request goes beyond
         args = request.args.copy()
-        args['page'] = total_pages
+        args['page'] = total_pages                                                                                              # type: ignore
         # return redirect(url_for('list_articles', **args)) # Redirect approach
         page = total_pages # Simpler: just set page to last page
 
@@ -214,8 +222,8 @@ def add_manual_article():
             return redirect(url_for('add_manual_article'))
 
         # Check if article already exists (SQLModel session)
-        with database.get_db_connection() as session:
-            stmt = select(database.Article).where(database.Article.url == article_url)
+        with get_db_connection() as session:
+            stmt = select(Article).where(Article.url == article_url)
             existing_article = session.exec(stmt).first()
         if existing_article:
             flash(f'Article from URL "{article_url}" already exists (ID: {existing_article.id}).', 'warning')
@@ -239,7 +247,7 @@ def add_manual_article():
             final_raw_content = scraped_details['raw_content'] # Can be None
             final_image_url = scraped_details['image_url']   # Can be None
 
-            article_id = database.add_article(
+            article_id = database.add_article(                                                                                                      # type: ignore
                 url=article_url,
                 title=final_title,
                 published_date=datetime.now(), # Or try to get from OG tags if scrape_single enhanced
@@ -274,6 +282,30 @@ def add_manual_article():
 
     return render_template('add_article.html', available_profiles=available_profiles, default_manual_profile=manual_profile_name)
 
+@app.route('/react', defaults={'path': ''})
+@app.route('/react<path:path>')
+def serve_react(path):
+    """
+    Serve os arquivos do React em produção.
+    """
+    static_folder = os.path.join(os.path.dirname(__file__), 'frontend', 'dist')
+    
+    # Verifica se a pasta dist existe
+    if not os.path.exists(static_folder):
+        return """
+        <h1>React não compilado ainda</h1>
+        <p>Para usar esta rota, você precisa:</p>
+        <ol>
+            <li>cd frontend</li>
+            <li>npm run build</li>
+        </ol>
+        """, 404
+    
+    if path and os.path.exists(os.path.join(static_folder, path)):
+        return send_from_directory(static_folder, path)
+    
+    return send_from_directory(static_folder, 'index.html')
+
 if __name__ == '__main__':
-    database.init_db()
+    create_db_and_tables()
     app.run(host='0.0.0.0', port=5000, debug=True)

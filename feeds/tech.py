@@ -18,9 +18,15 @@ RSS_FEEDS = [
   "https://gizmodo.com/feed"
 ]
 
+DISPLAY_NAME = "Tech"
+
+TEXT_COLOR = "text-blue-800"
+
 TELEGRAM_CHAT_ID = {
   574021995: 'https://galdinho.news',
-  336581665: 'https://bruzinha.galdinho.news'
+  336581665: 'https://bruzinha.galdinho.news',
+  125774312: 'https://bruzinha.galdinho.news', #Veskinha
+  169393478: 'https://bruzinha.galdinho.news' #Juninho
 }
 
 # FILTRO INICIAL PARA DECIDIR QUAL NOTÍCIA IMPORTAR

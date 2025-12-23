@@ -3,9 +3,8 @@ Database operations using SQLModel for the Meridiano application.
 This replaces the SQLite-based database.py with modern SQLModel operations.
 """
 
-import json
-import logging
-from datetime import datetime, timedelta, date
+import json, logging
+from datetime import datetime, date
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.exc import IntegrityError
@@ -13,38 +12,26 @@ from sqlmodel import and_, asc, desc, func, or_, select
 from sqlalchemy import text
 
 import config_base as config
-from models import Article, Brief, get_session
+from models import Article, Brief
+from db import get_db_connection
 
 logger = logging.getLogger(__name__)
 
 ARTICLES_PER_PAGE_DEFAULT = 25
 
-
-def get_db_connection():
-    """Returns a new database session (replaces SQLite connection)"""
-    return get_session()
-
-
-def init_db():
-    """Initialize the database - create all tables"""
-    from models import init_db as model_init_db
-
-    model_init_db()
-
-
 def get_unrated_articles(
     feed_profile: str, limit: int = 50
 ) -> List[Dict[str, Any]]:
     """Gets processed articles that haven't been rated yet."""
-    with get_session() as session:
+    with get_db_connection() as session:
         statement = (
             select(Article)
             .where(
                 and_(
-                    Article.processed_content.is_not(None),
+                    Article.processed_content.is_not(None), # type: ignore
                     Article.processed_content != "",
-                    Article.processed_at.is_not(None),
-                    Article.impact_score.is_(None),
+                    Article.processed_at.is_not(None), # type: ignore
+                    Article.impact_score.is_(None), # type: ignore
                     Article.feed_profile == feed_profile,
                 )
             )
@@ -58,7 +45,7 @@ def get_unrated_articles(
 
 def update_article_rating(article_id: int, impact_score: int) -> None:
     """Updates an article with its impact score."""
-    with get_session() as session:
+    with get_db_connection() as session:
         statement = select(Article).where(Article.id == article_id)
         article = session.exec(statement).first()
         if article:
@@ -69,7 +56,7 @@ def update_article_rating(article_id: int, impact_score: int) -> None:
 
 def get_article_by_id(article_id: int) -> Optional[Dict[str, Any]]:
     """Retrieves all data for a specific article by its ID."""
-    with get_session() as session:
+    with get_db_connection() as session:
         statement = select(Article).where(Article.id == article_id)
         article = session.exec(statement).first()
         return _article_to_dict(article) if article else None
@@ -137,14 +124,14 @@ def _build_article_filters(
         filters.append(Article.feed_profile == feed_profile)
     
     if only_processed:
-        filters.append(Article.processed_at.is_not(None))
-        filters.append(Article.embedding.is_not(None))
-        filters.append(Article.impact_score.is_not(None))
+        filters.append(Article.processed_at.is_not(None)) # type: ignore
+        filters.append(Article.embedding.is_not(None)) # type: ignore
+        filters.append(Article.impact_score.is_not(None)) # type: ignore
     
     filters.append(
             or_(
-                Article.initial_filter_score.is_(None),
-                Article.initial_filter_score >= 3
+                Article.initial_filter_score.is_(None), # type: ignore
+                Article.initial_filter_score >= 3 # type: ignore
             )
         )
 
@@ -161,18 +148,26 @@ def get_all_articles(
     end_date: Optional[date] = None,
     feed_profile: Optional[str] = None,
     search_term: Optional[str] = None,
-    only_processed: bool = True
+    only_processed: bool = True,
+    secondary_sort: str = None, # type: ignore
+    secondary_direction: str = "desc",
+    min_impact_score: Optional[int] = None
 ) -> List[Dict[str, Any]]:
     """
     Fetches articles with filtering, sorting, and full-text search.
     Uses PostgreSQL full-text search when available, falls back to LIKE search.
     """
-    with get_session() as session:
+    with get_db_connection() as session:
         # Start with base query
         statement = select(Article)
 
         # Apply basic filters
         filters = _build_article_filters(start_date, end_date, feed_profile, only_processed)
+
+        # Adiciona filtro de impact_score se fornecido
+        if min_impact_score is not None:
+            filters.append(Article.impact_score >= min_impact_score) # type: ignore
+
         if filters:
             statement = statement.where(and_(*filters))
 
@@ -194,8 +189,8 @@ def get_all_articles(
             else:
                 # Fallback to LIKE search for SQLite
                 search_filter = or_(
-                    Article.title.ilike(f"%{search_term}%"),
-                    Article.raw_content.ilike(f"%{search_term}%"),
+                    Article.title.ilike(f"%{search_term}%"), # type: ignore
+                    Article.raw_content.ilike(f"%{search_term}%"), # type: ignore
                 )
                 statement = statement.where(search_filter)
 
@@ -204,13 +199,46 @@ def get_all_articles(
             "published_date": Article.published_date,
             "impact_score": Article.impact_score,
             "fetched_at": Article.fetched_at,
+            "processed_at": Article.processed_at,
         }
 
         sort_column = sort_columns.get(sort_by, Article.published_date)
-        if direction.lower() == "asc":
-            statement = statement.order_by(asc(sort_column), desc(Article.id))
+
+        if secondary_sort and secondary_sort in sort_columns:
+            secondary_column = sort_columns[secondary_sort]
+
+
+            if direction.lower() == "asc":
+                if secondary_direction.lower() == "asc":
+                    statement = statement.order_by(
+                        asc(sort_column), 
+                        asc(secondary_column), 
+                        desc(Article.id)
+                    )
+                else:
+                    statement = statement.order_by(
+                        asc(sort_column), 
+                        desc(secondary_column), 
+                        desc(Article.id)
+                    )
+            else:
+                if secondary_direction.lower() == "asc":
+                    statement = statement.order_by(
+                        desc(sort_column), 
+                        asc(secondary_column), 
+                        desc(Article.id)
+                    )
+                else:
+                    statement = statement.order_by(
+                        desc(sort_column), 
+                        desc(secondary_column), 
+                        desc(Article.id)
+                    )
         else:
-            statement = statement.order_by(desc(sort_column), desc(Article.id))
+            if direction.lower() == "asc":
+                statement = statement.order_by(asc(sort_column), desc(Article.id))
+            else:
+                statement = statement.order_by(desc(sort_column), desc(Article.id))
 
         # Apply pagination
         offset = (page - 1) * per_page
@@ -228,9 +256,9 @@ def get_total_article_count(
     only_processed: bool = True
 ) -> int:
     """Returns total count of articles with optional filtering and search."""
-    with get_session() as session:
+    with get_db_connection() as session:
         # Start with base query
-        statement = select(func.count(Article.id))
+        statement = select(func.count(Article.id)) # type: ignore
 
         # Apply basic filters
         filters = _build_article_filters(start_date, end_date, feed_profile, only_processed)
@@ -255,8 +283,8 @@ def get_total_article_count(
             else:
                 # Fallback to LIKE search
                 search_filter = or_(
-                    Article.title.ilike(f"%{search_term}%"),
-                    Article.raw_content.ilike(f"%{search_term}%"),
+                    Article.title.ilike(f"%{search_term}%"), # type: ignore
+                    Article.raw_content.ilike(f"%{search_term}%"), # type: ignore
                 )
                 statement = statement.where(search_filter)
 
@@ -277,14 +305,14 @@ def add_article(
     briefing_analyzed: bool = False
 ) -> Optional[int]:
     """Adds a new article with optional image URL."""
-    with get_session() as session:
+    with get_db_connection() as session:
         try:
             # Ensure Postgres sequence is in sync to avoid duplicate primary key errors
             if "postgresql" in config.DATABASE_URL.lower():
                 try:
                     # Sync the sequence to the current max(id) so nextval() will produce a fresh value.
-                    session.exec(
-                        text(
+                    session.exec(                                                                                                       # type: ignore
+                        text(                                                                                                           # type: ignore
                             "SELECT setval(pg_get_serial_sequence('articles','id'), COALESCE((SELECT MAX(id) FROM articles), 1))"
                         )
                     )
@@ -321,18 +349,18 @@ def get_unprocessed_articles(
     feed_profile: str, limit: int = 50
 ) -> List[Dict[str, Any]]:
     """Gets articles that haven't been processed yet."""
-    with get_session() as session:
+    with get_db_connection() as session:
         statement = (
             select(Article)
             .where(
                 and_(
-                    Article.processed_at.is_(None),
-                    Article.raw_content.is_not(None),
+                    Article.processed_at.is_(None),                                 # type: ignore
+                    Article.raw_content.is_not(None),                               # type: ignore
                     Article.raw_content != "",
                     Article.feed_profile == feed_profile,
                     or_(
-                        Article.initial_filter_score.is_(None),
-                        Article.initial_filter_score >= 3
+                        Article.initial_filter_score.is_(None),                                 # type: ignore
+                        Article.initial_filter_score >= 3                                       # type: ignore
                     )
                 )
             )
@@ -348,7 +376,7 @@ def update_article_processing(
     article_id: int, processed_content: str, embedding: Optional[List[float]]
 ) -> None:
     """Updates an article with its summary, embedding, and processed timestamp."""
-    with get_session() as session:
+    with get_db_connection() as session:
         statement = select(Article).where(Article.id == article_id)
         article = session.exec(statement).first()
         if article:
@@ -373,16 +401,16 @@ def get_articles_for_briefing(
     Returns:
         List of article dictionaries ready for briefing
     """
-    with get_session() as session:
+    with get_db_connection() as session:
         statement = (
             select(Article)
             .where(
                 and_(
                     Article.feed_profile == feed_profile,
-                    Article.processed_at.is_not(None),
-                    Article.embedding.is_not(None),
-                    Article.impact_score.is_not(None),
-                    Article.impact_score >= min_impact_score,
+                    Article.processed_at.is_not(None),                                 # type: ignore
+                    Article.embedding.is_not(None),                                    # type: ignore
+                    Article.impact_score.is_not(None),                                 # type: ignore
+                    Article.impact_score >= min_impact_score,                          # type: ignore
                     Article.briefing_analyzed == False
                 )
             )
@@ -397,7 +425,7 @@ def save_brief(
     brief_markdown: str, contributing_article_ids: List[int], feed_profile: str
 ) -> int:
     """Saves the generated brief including its feed profile."""
-    with get_session() as session:
+    with get_db_connection() as session:
         ids_json = json.dumps(contributing_article_ids)
         brief = Brief(
             brief_markdown=brief_markdown,
@@ -409,8 +437,8 @@ def save_brief(
         # Guarantee unique and sequential id
         if "postgresql" in config.DATABASE_URL.lower():
             try:
-                session.exec(
-                    text(
+                session.exec(                                                                                                                # type: ignore
+                    text(                                                                                                                    # type: ignore
                         "SELECT setval(pg_get_serial_sequence('briefs','id'), COALESCE((SELECT MAX(id) FROM briefs), 1))"
                     )
                 )
@@ -445,14 +473,14 @@ def save_brief(
         session.commit()
 
 
-        return brief.id
+        return brief.id                                 # type: ignore
 
 
 def get_all_briefs_metadata(
     feed_profile: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Retrieves ID, timestamp, and profile for briefs, newest first, optionally filtered."""
-    with get_session() as session:
+    with get_db_connection() as session:
         statement = select(Brief)
 
         if feed_profile:
@@ -466,7 +494,7 @@ def get_all_briefs_metadata(
 
 def get_brief_by_id(brief_id: int) -> Optional[Dict[str, Any]]:
     """Retrieves a specific brief's content and timestamp by its ID."""
-    with get_session() as session:
+    with get_db_connection() as session:
         statement = select(Brief).where(Brief.id == brief_id)
         brief = session.exec(statement).first()
         return _brief_to_dict(brief) if brief else None
@@ -477,7 +505,7 @@ def get_distinct_feed_profiles(table: str = "articles") -> List[str]:
     if table not in ["articles", "briefs"]:
         raise ValueError("Invalid table name for distinct profiles.")
 
-    with get_session() as session:
+    with get_db_connection() as session:
         if table == "articles":
             statement = (
                 select(Article.feed_profile)
@@ -494,3 +522,8 @@ def get_distinct_feed_profiles(table: str = "articles") -> List[str]:
             result = session.exec(statement).all()
 
         return list(result)
+
+
+def init_db() -> None:
+    from db import create_db_and_tables
+    create_db_and_tables()

@@ -4,7 +4,6 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import logging
 from urllib.parse import urljoin
-from models import Article, get_session
 
 logging.basicConfig(
     level=logging.INFO,
@@ -119,8 +118,18 @@ def scrape_single_article_details(article_url):
     error_message = None
 
     try:
+        replaces = [
+            ("/", "%2F"), (":", "%3A"), (" ", "%20"),
+            ("?", "%3F"), ("&", "%26"), ("=", "%3D"), ("#", "%23")
+        ]
+        url_encoded = article_url
+
+        for old, new in replaces:
+            url_encoded = url_encoded.replace(old, new)
+        url_encoded = "https://marreta.galdinho.news/p/" + url_encoded
+
         # Use the existing fetch_article_content_and_og_image helper
-        fetch_result = fetch_article_content_and_og_image(article_url) # This already logs its own errors
+        fetch_result, marreta = fetch_article_content_and_og_image(article_url, url_encoded) # This already logs its own errors
 
         raw_content = fetch_result['content']
         og_image_url = fetch_result['og_image']

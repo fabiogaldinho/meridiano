@@ -1,0 +1,37 @@
+// src/components/Logo.tsx
+
+function Logo() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="mr-3"
+    >
+      { }
+      <path
+        d="M4 8C8 8 8 12 12 12C16 12 16 8 20 8C24 8 24 12 28 12"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 16C8 16 8 20 12 20C16 20 16 16 20 16C24 16 24 20 28 20"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 24C8 24 8 28 12 28C16 28 16 24 20 24C24 24 24 28 28 28"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        opacity="0.6"
+      />
+    </svg>
+  );
+}
+
+export default Logo;

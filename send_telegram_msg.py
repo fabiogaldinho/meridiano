@@ -47,12 +47,12 @@ def send_telegram_notification(chat_id, message, parse_mode='HTML'):
 notification_message = f"""
 <b>📰 Novo Briefing Disponível</b>
 
-<b>Feed:</b> gaming
-<b>Artigos:</b> 20
-<b>ID:</b> 39
+<b>Feed:</b> tech
+<b>Artigos:</b> 19
+<b>ID:</b> 132
 
-Acesse em: https://rain.galdinho.news
+Acesse em: https://bruzinha.galdinho.news
 """
 
 
-send_telegram_notification(901434795, notification_message)
+send_telegram_notification(169393478, notification_message)
