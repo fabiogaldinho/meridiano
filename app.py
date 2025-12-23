@@ -1,5 +1,5 @@
 # app.py - VERSÃO SPA REACT
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, abort
 from flask_cors import CORS
 from db import create_db_and_tables
 from api import api_bp
@@ -11,8 +11,7 @@ import os
 # ============================================
 app = Flask(
     __name__,
-    static_folder='frontend/dist',
-    static_url_path=''
+    static_folder=None
 )
 
 app.secret_key = os.getenv(
@@ -53,6 +52,10 @@ def serve_spa(path):
     1. Se o path é um arquivo estático (JS, CSS, etc) → serve o arquivo
     2. Senão → serve index.html (React Router pega a rota)
     """
+
+    # se for rota de API, deixa o blueprint tratar (ou devolve 404)
+    if path.startswith('api/'):
+        abort(404)
     
     static_folder = os.path.join(app.root_path, 'frontend', 'dist')
     

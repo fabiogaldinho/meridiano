@@ -71,12 +71,12 @@ function Home() {
 
           {/* Principais Notícias */}
           <TrendingSection 
-            title="Principais Notícias"
+            title="PRINCIPAIS NOTÍCIAS"
             limit={10}
           />
 
           {/* Todos os Artigos */}
-          <PaginatedArticles title="Todos os Artigos" />
+          <PaginatedArticles title="TODOS OS ARTIGOS" />
       </div>
   );
 }

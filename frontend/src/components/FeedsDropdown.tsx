@@ -1,5 +1,5 @@
 // src/components/FeedsDropdown.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { Feed } from '../types/api';
 
@@ -8,6 +8,8 @@ function FeedsDropdown() {
   const [feeds, setFeeds] = useState<Feed[]>([]); // Lista de feeds da API
   const [loading, setLoading] = useState(true); // Está carregando?
   const [error, setError] = useState<string | null>(null); // Algum erro?
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function fetchFeeds() {
@@ -34,8 +36,34 @@ function FeedsDropdown() {
     fetchFeeds();
   }, []);
 
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent | TouchEvent) {
+      if (!containerRef.current) return;
+      const target = e.target as Node | null;
+      if (target && !containerRef.current.contains(target)) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsOpen(false);
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {/* --- BOTÃO FEEDS --- */}
       <button
         onClick={() => setIsOpen(!isOpen)}

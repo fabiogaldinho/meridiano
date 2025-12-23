@@ -95,7 +95,7 @@ function TrendingSection({
   return (
     <div className="my-12">
         <h2 className="text-3xl font-bold text-gray-800 mb-6">
-            {title}
+            <b>{title}</b>
         </h2>
 
         {/* Container com scroll horizontal */}
