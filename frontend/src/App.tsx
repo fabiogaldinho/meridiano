@@ -4,6 +4,7 @@ import Header from './components/Header';
 import Home from './pages/Home';
 import FeedPage from './pages/FeedPage';
 import BriefingPage from './pages/BriefingPage';
+import ArticlePage from './pages/ArticlePage';
 
 function App() {
     return (
@@ -19,6 +20,9 @@ function App() {
 
                     {/* Rota dinâmica para briefings */}
                     <Route path="/briefings/:id" element={<BriefingPage />} />
+
+                    {/* Rota dinâmica para articles */}
+                    <Route path="/articles/:id" element={<ArticlePage />} />
           
                     {/* Rota 404 */}
                     <Route path="*" element={

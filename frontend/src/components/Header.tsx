@@ -5,7 +5,7 @@ import FeedsDropdown from './FeedsDropdown';
 
 function Header() {
   return (
-    <header className="relative z-50 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 shadow-md">
+    <header className="sticky top-0 z-50 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 shadow-md">
       {/* Container com largura máxima e centralizado */}
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">

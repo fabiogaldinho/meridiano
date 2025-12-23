@@ -81,6 +81,7 @@ function PaginatedArticles({
                 key={article.id}
                 article={article}
                 feedMeta={feedsByName[article.feed_profile]}
+                variant="grid"
               />
             ))}
           </div>

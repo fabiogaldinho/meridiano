@@ -2,7 +2,7 @@
 
 function SkeletonBriefingPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Breadcrumb skeleton */}
       <div className="flex gap-2 mb-6">
         <div className="h-4 bg-gray-200 rounded w-16 animate-pulse" />
@@ -10,15 +10,6 @@ function SkeletonBriefingPage() {
         <div className="h-4 bg-gray-200 rounded w-20 animate-pulse" />
         <div className="h-4 bg-gray-200 rounded w-1 animate-pulse" />
         <div className="h-4 bg-gray-200 rounded w-24 animate-pulse" />
-      </div>
-
-      {/* Header skeleton */}
-      <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-8 bg-gray-200 rounded-full w-24 animate-pulse" />
-          <div className="h-6 bg-gray-200 rounded w-40 animate-pulse" />
-        </div>
-        <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
       </div>
 
       {/* Featured image skeleton */}

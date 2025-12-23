@@ -7,6 +7,7 @@ interface ArticleCardProps {
   article: Article;
   feedMeta?: Feed;
   onClick?: () => void;
+  variant?: 'scroll' | 'grid' | 'grid-compact';
 }
 
 function impactBadgeClass(score: number) {
@@ -26,7 +27,7 @@ function impactBadgeClass(score: number) {
 }
 
 
-function ArticleCard({ article, feedMeta, onClick }: ArticleCardProps) {
+function ArticleCard({ article, feedMeta, onClick, variant = 'scroll' }: ArticleCardProps) {
   const formattedDate = new Date(article.published_date).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'short',
@@ -39,14 +40,29 @@ function ArticleCard({ article, feedMeta, onClick }: ArticleCardProps) {
   // Se não passar onClick, usa navegação padrão
   const handleClick = onClick || (() => navigate(`/articles/${article.id}`));
 
+    const handleFeedClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigate(`/feeds/${article.feed_profile}`);
+    };
+
+  const isCompact = variant === 'grid-compact';
+  
+  const imageHeight = isCompact ? 'h-28' : 'h-40';
+  const contentPadding = isCompact ? 'p-3' : 'p-6';
+
 
   return (
     <div 
       onClick={handleClick}
-      className="flex-shrink-0 w-80 bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 cursor-pointer hover:shadow-xl hover:-translate-y-1"
+      className={`
+        bg-white rounded-xl shadow-md overflow-hidden 
+        transition-all duration-300 cursor-pointer 
+        hover:shadow-xl hover:-translate-y-1
+        ${variant === 'scroll' ? 'flex-shrink-0 w-80' : 'w-full'}
+      `}
     >
       {/* Imagem do artigo ou gradiente como placeholder */}
-      <div className="relative h-40 w-full">
+      <div className={`relative ${imageHeight} w-full`}>
         {!article.image_url || imgError ? (
           <div className="w-full h-full bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center">
             <span className="text-white text-6xl opacity-30">📰</span>
@@ -62,17 +78,15 @@ function ArticleCard({ article, feedMeta, onClick }: ArticleCardProps) {
 
         {/* Badges sobrepostos na imagem */}
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
-          {/* Badge do feed profile (esquerda) */}
-          <span
-            className={`
-              inline-block px-3 py-1 rounded-full text-xs font-semibold
-              backdrop-blur-sm shadow-sm
-              bg-gradient-to-r ${feedMeta?.badge_gradient ?? 'from-slate-200/90 to-slate-300/90'}
-              ${feedMeta?.text_color ?? 'text-gray-800'}
-            `}
-          >
-            {feedMeta?.display_name.toUpperCase() ?? article.feed_profile.toUpperCase()}
-          </span>
+            {/* Badge do feed profile (esquerda) */}
+            {feedMeta && (
+                <button
+                onClick={handleFeedClick}
+                className={`inline-block bg-white/90 backdrop-blur-sm rounded-md font-semibold uppercase ${feedMeta.text_color} hover:bg-white transition-colors ${isCompact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-xs'}`}
+                >
+                {feedMeta.display_name}
+                </button>
+            )}
 
           {/* Badge de impact score (direita) */}
           {article.impact_score && (
@@ -88,7 +102,7 @@ function ArticleCard({ article, feedMeta, onClick }: ArticleCardProps) {
       </div>
 
       {/* Conteúdo do card */}
-      <div className="p-6">
+      <div className={contentPadding}>
         {/* Título do artigo */}
         <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2">
           {article.title}

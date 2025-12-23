@@ -18,6 +18,11 @@ function Carousel({ briefings }: CarouselProps) {
 
   const currentBriefing = briefings[currentIndex];
 
+    const handleFeedClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigate(`/feeds/${currentBriefing.feed_profile}`);
+    };
+
   const nextSlide = () => {
     setCurrentIndex((prevIndex) => 
       prevIndex === briefings.length - 1 ? 0 : prevIndex + 1
@@ -66,9 +71,12 @@ function Carousel({ briefings }: CarouselProps) {
           <div className="max-w-2xl text-white">
             
             {/* Badge do feed */}
-            <span className="inline-block bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold uppercase mb-4">
-              {currentBriefing.feed_profile}
-            </span>
+            <button
+                onClick={handleFeedClick}
+                className="inline-block bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold uppercase mb-4 hover:bg-white/30 transition-colors cursor-pointer"
+            >
+                {currentBriefing.feed_profile}
+            </button>
 
             {/* Título */}
             <h2 className="text-4xl font-bold mb-4">

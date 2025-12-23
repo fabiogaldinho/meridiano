@@ -42,6 +42,7 @@ class Article(SQLModel, table=True):
     feed_source: Optional[str] = None
     fetched_at: datetime = Field(default_factory=datetime.now)
     raw_content: Optional[str] = None
+    formatted_content: Optional[str] = Field(default=None)
     processed_content: Optional[str] = None
     embedding: Optional[str] = None  # JSON string
     processed_at: Optional[datetime] = Field(default=None, index=True)

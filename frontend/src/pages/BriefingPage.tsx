@@ -1,66 +1,65 @@
 // src/pages/BriefingPage.tsx
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import type { Briefing, Article, Feed } from '../types';
-import { getBriefing, getFeeds } from '../services/api';
+import { getBriefing, getFeeds, getArticle } from '../services/api';
 import ArticleCard from '../components/ArticleCard';
 import SkeletonBriefingPage from '../components/SkeletonBriefingPage';
 
 function BriefingPage() {
-  const { id } = useParams<{ id: string }>();
-  
-  const [briefing, setBriefing] = useState<Briefing | null>(null);
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [feeds, setFeeds] = useState<Feed[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [imgError, setImgError] = useState(false);
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+    
+    const [briefing, setBriefing] = useState<Briefing | null>(null);
+    const [articles, setArticles] = useState<Article[]>([]);
+    const [feeds, setFeeds] = useState<Feed[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [imgError, setImgError] = useState(false);
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!id) return;
 
-      try {
-        setLoading(true);
+    useEffect(() => {
+        async function fetchData() {
+        if (!id) return;
 
-        // Busca briefing e feeds em paralelo
-        const [briefingData, feedsData] = await Promise.all([
-          getBriefing(parseInt(id)),
-          getFeeds()
-        ]);
+        try {
+            setLoading(true);
 
-        setBriefing(briefingData);
-        setFeeds(feedsData);
+            // Busca briefing e feeds em paralelo
+            const [briefingData, feedsData] = await Promise.all([
+            getBriefing(parseInt(id)),
+            getFeeds()
+            ]);
 
-        // DEBUG: Ver o que está chegando
-        console.log('Briefing completo:', briefingData);
-        console.log('Featured image:', briefingData.featured_image);
+            setBriefing(briefingData);
+            setFeeds(feedsData);
 
-        // Busca artigos relacionados
-        const articleIds: number[] = JSON.parse(briefingData.contributing_article_ids || '[]');
-        
-        console.log('IDs dos artigos:', articleIds);
+            // DEBUG: Ver o que está chegando
+            console.log('Briefing completo:', briefingData);
+            console.log('Featured image:', briefingData.featured_image);
 
-        const articlePromises = articleIds.map(async (articleId) => {
-          const response = await fetch(`/api/articles/${articleId}`);
-          return response.ok ? await response.json() : null;
-        });
+            // Busca artigos relacionados
+            const articleIds: number[] = JSON.parse(briefingData.contributing_article_ids || '[]');
+            
+            console.log('IDs dos artigos:', articleIds);
+
+            const articlePromises = articleIds.map(articleId => getArticle(articleId));
 
         const articlesData = await Promise.all(articlePromises);
-        setArticles(articlesData.filter(a => a !== null));
+        setArticles(articlesData);
 
-        console.log('Artigos carregados:', articlesData.filter(a => a !== null).length);
+        console.log('Artigos carregados:', articlesData.length);
 
-      } catch (err) {
-        console.error('Erro ao carregar briefing:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
+        } catch (err) {
+            console.error('Erro ao carregar briefing:', err);
+        } finally {
+            setLoading(false);
+        }
+        }
 
-    fetchData();
-  }, [id]);
+        fetchData();
+    }, [id]);
 
   // Loading state
   if (loading) {
@@ -81,21 +80,25 @@ function BriefingPage() {
       </div>
     );
   }
-
-  // Helpers
-  const feedsByName = Object.fromEntries(feeds.map(f => [f.name, f]));
-  const feedMeta = feedsByName[briefing.feed_profile];
   
-  const formattedDate = new Date(briefing.generated_at).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+    // Helpers
+    const feedsByName = Object.fromEntries(feeds.map(f => [f.name, f]));
+    const feedMeta = feedsByName[briefing.feed_profile];
+  
+    const formattedDate = new Date(briefing.generated_at).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+  
+    const handleFeedClick = () => {
+        navigate(`/feeds/${briefing.feed_profile}`);
+    };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
       <nav className="text-sm text-gray-600 mb-6">
         <Link to="/" className="hover:text-blue-600">Home</Link>
@@ -107,52 +110,50 @@ function BriefingPage() {
         <span className="text-gray-800">Briefing #{briefing.id}</span>
       </nav>
 
-      {/* Header */}
-      <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          {/* Badge do feed */}
-          <span 
-            className={`inline-block bg-gray-100 px-4 py-2 rounded-full text-sm font-semibold uppercase ${feedMeta?.text_color || 'text-gray-800'}`}
-          >
-            {feedMeta?.display_name || briefing.feed_profile}
-          </span>
+      {/* Featured Image */}
+      <div className="relative rounded-2xl overflow-hidden shadow-2xl mb-8 h-[400px]">
+        {/* Background */}
+        <div className="absolute inset-0 z-0">
+          {!briefing.featured_image || imgError ? (
+            <div className="w-full h-full bg-gradient-to-br from-slate-800 via-gray-900 to-black flex items-center justify-center">
+              <span className="text-white text-9xl opacity-20">📋</span>
+            </div>
+          ) : (
+            <img 
+              src={briefing.featured_image}
+              alt={`Briefing #${briefing.id}`}
+              className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          )}
           
-          {/* Data */}
-          <span className="text-gray-600 text-sm">
-            {formattedDate}
-          </span>
+          {/* GRADIENTE OVERLAY */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         </div>
 
-        {/* Título */}
-        <h1 className="text-4xl font-bold text-gray-800">
-          Briefing #{briefing.id}
-        </h1>
-      </div>
+        {/* Badge superior direito */}
+        <div className="absolute top-6 right-6 z-10">
+            {feedMeta && (
+                <button
+                    onClick={handleFeedClick}
+                    className={`inline-block bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-sm font-semibold uppercase ${feedMeta.text_color} hover:bg-white transition-colors cursor-pointer`}
+                >
+                {feedMeta.display_name}
+                </button>
+            )}
+        </div>
 
-      {/* Featured Image */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
-        {!briefing.featured_image || imgError ? (
-          // Gradiente quando não tem imagem
-          <div className="w-full h-96 bg-gradient-to-br from-slate-800 via-gray-900 to-black flex items-center justify-center">
-            <span className="text-white text-9xl opacity-20">📋</span>
-            {/* DEBUG */}
-            <div className="absolute bottom-4 left-4 text-white text-xs opacity-50">
-              {!briefing.featured_image ? 'Sem imagem' : 'Erro ao carregar'}
-            </div>
+        {/* Conteúdo inferior */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 p-8">
+          <div className="flex items-end justify-between">
+            <h1 className="text-5xl font-bold text-white leading-tight">
+              Briefing #{briefing.id}
+            </h1>
+            <span className="text-white/90 text-sm whitespace-nowrap ml-4">
+              {formattedDate}
+            </span>
           </div>
-        ) : (
-          // Imagem quando existe
-          <img 
-            src={briefing.featured_image}
-            alt={`Briefing #${briefing.id}`}
-            className="w-full h-96 object-cover"
-            onError={() => {
-              console.error('Erro ao carregar imagem:', briefing.featured_image);
-              setImgError(true);
-            }}
-            onLoad={() => console.log('Imagem carregada com sucesso!')}
-          />
-        )}
+        </div>
       </div>
 
       {/* Content */}
@@ -176,6 +177,7 @@ function BriefingPage() {
                 key={article.id}
                 article={article}
                 feedMeta={feedsByName[article.feed_profile]}
+                variant="grid"
               />
             ))}
           </div>

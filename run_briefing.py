@@ -435,6 +435,7 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
             print(f"  Fetching article content and OG image...")
             fetch_result, marreta = fetch_article_content_and_og_image(url, url_encoding)
             raw_content = fetch_result['content']
+            formatted_content = fetch_result['formatted']
             og_image_url = fetch_result['og_image']
             # --- End Fetch ---
 
@@ -541,7 +542,8 @@ def scrape_articles(feed_profile, rss_feeds, effective_config): # Added params
                 url_encoding,
                 final_image_url,
                 initial_filter_score=filter_score,
-                marreta=marreta)
+                marreta=marreta,
+                formatted_content=formatted_content)
             if article_id: new_articles_count += 1
             time.sleep(0.5) # Be polite
 

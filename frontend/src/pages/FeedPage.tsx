@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import type { Feed } from '../types/api';
 import FeedSection from '../components/FeedSection';
+import SkeletonFeedPage from '../components/SkeletonFeedPage';
 
 function FeedPage() {
   const { feedName } = useParams<{ feedName: string }>();
@@ -32,7 +33,11 @@ function FeedPage() {
     }
   }, [feedName]);
 
-  if (!feedName || (!loading && !feedInfo)) {
+  if (loading) {
+    return <SkeletonFeedPage />;
+  }
+
+  if (!feedName || !feedInfo) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-4">Feed não encontrado</h1>

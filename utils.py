@@ -35,6 +35,7 @@ def fetch_article_content_and_og_image(url, url_encoded):
         dict: {'content': str|None, 'og_image': str|None}
     """
     content = None
+    formatted_content = None
     og_image = None
     marreta = False
     try:
@@ -81,6 +82,16 @@ def fetch_article_content_and_og_image(url, url_encoded):
         # 1. Extract text content
         content = trafilatura.extract(html_content, include_comments=False, include_tables=False)
 
+        formatted_content = trafilatura.extract(
+            html_content,
+            include_comments=False,
+            include_tables=False,
+            include_formatting=True,
+            favor_precision=True,
+            output_format='markdown'
+        )
+        
+
         # 2. Extract og:image using BeautifulSoup
         soup = BeautifulSoup(html_content, 'lxml') # Use lxml or html.parser
         og_image_tag = soup.find('meta', property='og:image')
@@ -89,16 +100,16 @@ def fetch_article_content_and_og_image(url, url_encoded):
             # Optionally resolve relative URLs - less common for og:image but possible
             og_image = urljoin(url, og_image)
 
-        return {'content': content, 'og_image': og_image}, marreta
+        return {'content': content, 'formatted': formatted_content, 'og_image': og_image}, marreta
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching {url}: {e}")
-        return {'content': None, 'og_image': None}, marreta
+        return {'content': None, 'formatted': None, 'og_image': None}, marreta
     except Exception as e:
         # Catch potential BeautifulSoup errors or others
         print(f"Error processing content/og:image from {url}: {e}")
         # Still return content if it was extracted before the error
-        return {'content': content, 'og_image': None}, marreta
+        return {'content': content, 'formatted': formatted_content, 'og_image': None}, marreta
 
 def scrape_single_article_details(article_url):
     """

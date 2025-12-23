@@ -1,5 +1,6 @@
 # Script: clean_old_briefs.py
-from models import get_session, Brief
+from db import get_session
+from models import Brief
 from sqlmodel import select
 
 with get_session() as session:

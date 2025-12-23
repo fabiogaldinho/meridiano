@@ -75,3 +75,17 @@ export async function getFeeds(): Promise<Feed[]> {
   const data = await response.json();
   return data.feeds;
 }
+
+
+/**
+ * Busca um artigo específico por ID
+ */
+export async function getArticle(id: number): Promise<Article> {
+  const response = await fetch(`/api/articles/${id}`);
+  
+  if (!response.ok) {
+    throw new Error(`Erro ao buscar artigo ${id}: ${response.status}`);
+  }
+
+  return await response.json();
+}

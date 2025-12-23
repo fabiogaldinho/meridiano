@@ -76,6 +76,7 @@ def _article_to_dict(article: Article) -> Dict[str, Any]:
             "feed_source",
             "fetched_at",
             "raw_content",
+            "formatted_content",
             "processed_content",
             "embedding",
             "processed_at",
@@ -302,7 +303,8 @@ def add_article(
     image_url: Optional[str] = None,
     initial_filter_score: Optional[int] = None,
     marreta: bool = False,
-    briefing_analyzed: bool = False
+    briefing_analyzed: bool = False,
+    formatted_content: Optional[str] = None
 ) -> Optional[int]:
     """Adds a new article with optional image URL."""
     with get_db_connection() as session:
@@ -327,6 +329,7 @@ def add_article(
                 published_date=published_date,
                 feed_source=feed_source,
                 raw_content=raw_content,
+                formatted_content=formatted_content,
                 image_url=image_url,
                 feed_profile=feed_profile,
                 fetched_at=datetime.now(),

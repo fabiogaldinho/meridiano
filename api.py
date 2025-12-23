@@ -106,12 +106,45 @@ def get_briefing(brief_id):
     if brief is None:
         return jsonify({'error': 'Briefing not found'}), 404
     
+    featured_image = None
+    article_ids = []
+    
+    if brief.get('contributing_article_ids'):
+        try:
+            article_ids = json.loads(brief['contributing_article_ids'])
+        except:
+            article_ids = []
+    
+    if article_ids:
+        from sqlmodel import select, desc, and_
+        from models import Article
+        
+        with database.get_db_connection() as session:
+            stmt = (
+                select(Article)
+                .where(
+                    and_(
+                        Article.id.in_(article_ids),            # type: ignore
+                        Article.image_url.is_not(None),         # type: ignore
+                        Article.image_url != ''                 # type: ignore
+                    )
+                )
+                .order_by(desc(Article.impact_score))
+                .limit(1)
+            )
+            
+            featured_article = session.exec(stmt).first()
+            
+            if featured_article:
+                featured_image = featured_article.image_url
+    
     return jsonify({
         'id': brief['id'],
         'generated_at': brief['generated_at'],
         'feed_profile': brief['feed_profile'],
         'brief_markdown': brief['brief_markdown'],
-        'contributing_article_ids': brief['contributing_article_ids']
+        'contributing_article_ids': brief['contributing_article_ids'],
+        'featured_image': featured_image
     })
 
 
@@ -156,6 +189,22 @@ def get_articles():
         'per_page': per_page,
         'total_pages': total_pages
     })
+
+
+
+@api_bp.route('/articles/<int:article_id>', methods=['GET'])
+def get_article(article_id):
+    """
+    Retorna um artigo específico por ID.
+    
+    Exemplo: GET /api/articles/42
+    """
+    article = database.get_article_by_id(article_id)
+    
+    if article is None:
+        return jsonify({'error': 'Article not found'}), 404
+    
+    return jsonify(article)
 
 
 @api_bp.route('/articles/trending', methods=['GET'])
