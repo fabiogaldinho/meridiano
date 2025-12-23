@@ -16,3 +16,4 @@ lxml_html_clean
 # SQLModel and PostgreSQL dependencies
 sqlmodel
 psycopg2-binary # PostgreSQL adapter
+flask-cors==6.0.2

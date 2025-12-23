@@ -4,7 +4,6 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import logging
 from urllib.parse import urljoin
-from models import Article, get_session
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,6 +35,7 @@ def fetch_article_content_and_og_image(url, url_encoded):
         dict: {'content': str|None, 'og_image': str|None}
     """
     content = None
+    formatted_content = None
     og_image = None
     marreta = False
     try:
@@ -82,6 +82,16 @@ def fetch_article_content_and_og_image(url, url_encoded):
         # 1. Extract text content
         content = trafilatura.extract(html_content, include_comments=False, include_tables=False)
 
+        formatted_content = trafilatura.extract(
+            html_content,
+            include_comments=False,
+            include_tables=False,
+            include_formatting=True,
+            favor_precision=True,
+            output_format='markdown'
+        )
+        
+
         # 2. Extract og:image using BeautifulSoup
         soup = BeautifulSoup(html_content, 'lxml') # Use lxml or html.parser
         og_image_tag = soup.find('meta', property='og:image')
@@ -90,16 +100,16 @@ def fetch_article_content_and_og_image(url, url_encoded):
             # Optionally resolve relative URLs - less common for og:image but possible
             og_image = urljoin(url, og_image)
 
-        return {'content': content, 'og_image': og_image}, marreta
+        return {'content': content, 'formatted': formatted_content, 'og_image': og_image}, marreta
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching {url}: {e}")
-        return {'content': None, 'og_image': None}, marreta
+        return {'content': None, 'formatted': None, 'og_image': None}, marreta
     except Exception as e:
         # Catch potential BeautifulSoup errors or others
         print(f"Error processing content/og:image from {url}: {e}")
         # Still return content if it was extracted before the error
-        return {'content': content, 'og_image': None}, marreta
+        return {'content': content, 'formatted': formatted_content, 'og_image': None}, marreta
 
 def scrape_single_article_details(article_url):
     """
@@ -119,8 +129,18 @@ def scrape_single_article_details(article_url):
     error_message = None
 
     try:
+        replaces = [
+            ("/", "%2F"), (":", "%3A"), (" ", "%20"),
+            ("?", "%3F"), ("&", "%26"), ("=", "%3D"), ("#", "%23")
+        ]
+        url_encoded = article_url
+
+        for old, new in replaces:
+            url_encoded = url_encoded.replace(old, new)
+        url_encoded = "https://marreta.galdinho.news/p/" + url_encoded
+
         # Use the existing fetch_article_content_and_og_image helper
-        fetch_result = fetch_article_content_and_og_image(article_url) # This already logs its own errors
+        fetch_result, marreta = fetch_article_content_and_og_image(article_url, url_encoded) # This already logs its own errors
 
         raw_content = fetch_result['content']
         og_image_url = fetch_result['og_image']
