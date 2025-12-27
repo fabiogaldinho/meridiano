@@ -36,7 +36,7 @@ function FeedSection({ feedProfile, title }: FeedSectionProps) {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header da página do feed */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3">
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
           <b>FEED {title.toUpperCase()}</b>
         </h1>
       </div>
@@ -50,7 +50,7 @@ function FeedSection({ feedProfile, title }: FeedSectionProps) {
 
       {/* 2. Principais Notícias */}
       <TrendingSection 
-        title="Principais Notícias"
+        title="PRINCIPAIS NOTÍCIAS"
         feedProfile={feedProfile}
         limit={10}
       />
@@ -58,7 +58,7 @@ function FeedSection({ feedProfile, title }: FeedSectionProps) {
       {/* 3. Todos os Artigos */}
       <PaginatedArticles 
         feedProfile={feedProfile}
-        title="Todos os Artigos"
+        title="TODOS OS ARTIGOS"
       />
     </div>
   );

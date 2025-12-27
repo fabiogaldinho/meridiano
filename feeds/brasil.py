@@ -15,9 +15,9 @@ TEXT_COLOR = "text-green-800"
 
 TELEGRAM_CHAT_ID = {
    574021995: 'https://galdinho.news',
-   336581665: 'https://bruzinha.galdinho.news',
-   125774312: 'https://bruzinha.galdinho.news', #Veskinha
-   169393478: 'https://bruzinha.galdinho.news' #Juninho
+   336581665: 'https://galdinho.news',
+   125774312: 'https://galdinho.news', #Veskinha
+   169393478: 'https://galdinho.news' #Juninho
 }
 
 

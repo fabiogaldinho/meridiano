@@ -55,7 +55,7 @@ function ArticleCard({ article, feedMeta, onClick, variant = 'scroll' }: Article
     <div 
       onClick={handleClick}
       className={`
-        bg-white rounded-xl shadow-md overflow-hidden 
+        bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden 
         transition-all duration-300 cursor-pointer 
         hover:shadow-xl hover:-translate-y-1
         ${variant === 'scroll' ? 'flex-shrink-0 w-80' : 'w-full'}
@@ -104,25 +104,25 @@ function ArticleCard({ article, feedMeta, onClick, variant = 'scroll' }: Article
       {/* Conteúdo do card */}
       <div className={contentPadding}>
         {/* Título do artigo */}
-        <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2">
+        <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2 dark:text-gray-100">
           {article.title}
         </h3>
 
         {/* Data */}
-        <p className="text-gray-600 text-sm mb-3">
+        <p className="text-gray-600 text-sm mb-3 dark:text-gray-400">
           {formattedDate}
         </p>
 
         {/* Resumo do artigo */}
         {article.processed_content && (
-          <p className="text-gray-700 text-sm line-clamp-3 mb-3">
+          <p className="text-gray-700 text-sm line-clamp-3 mb-3 dark:text-gray-300">
             {article.processed_content}
           </p>
         )}
 
         {/* Link "Ler mais" */}
         {onClick && (
-          <p className="text-blue-600 font-semibold text-sm">
+          <p className="text-blue-600 font-semibold text-sm dark:text-blue-400">
             Ler mais →
           </p>
         )}

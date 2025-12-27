@@ -5,7 +5,7 @@ function SkeletonTrendingSection() {
   return (
     <div className="my-12">
       {/* Título skeleton */}
-      <div className="h-9 bg-gray-200 rounded w-64 mb-6 animate-pulse" />
+      <div className="h-9 bg-gray-200 dark:bg-slate-700 rounded w-64 mb-6 animate-pulse" />
 
       {/* Grid de skeletons */}
       <div className="flex gap-4 overflow-hidden">

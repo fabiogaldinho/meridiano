@@ -42,3 +42,31 @@ export interface Feed {
     badge_gradient?: string;
     text_color?: string;
 }
+
+
+// ============================================
+// AUTH TYPES
+// ============================================
+export interface User {
+    id: number;
+    username: string;
+    email: string;
+    full_name: string | null;
+    is_admin: boolean;
+    created_at: string;
+    last_login: string | null;
+}
+
+export interface LoginResponse {
+    token: string;
+    user: User;
+}
+
+export interface AuthContextType {
+    user: User | null;
+    token: string | null;
+    login: (username: string, password: string) => Promise<void>;
+    logout: () => void;
+    isAuthenticated: boolean;
+    loading: boolean;
+}
