@@ -3,6 +3,7 @@ from flask import Flask, send_from_directory, abort
 from flask_cors import CORS
 from db import create_db_and_tables
 from api import api_bp
+from auth import auth_bp
 import os
 
 
@@ -24,6 +25,7 @@ app.secret_key = os.getenv(
 # BLUEPRINTS
 # ============================================
 app.register_blueprint(api_bp)
+app.register_blueprint(auth_bp)
 
 
 # ============================================

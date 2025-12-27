@@ -63,7 +63,7 @@ function PaginatedArticles({
 
   return (
     <div className="my-12">
-      <h2 className="text-3xl font-bold text-gray-800 mb-6"><b>{title}</b></h2>
+      <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6"><b>{title}</b></h2>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -72,7 +72,7 @@ function PaginatedArticles({
           ))}
         </div>
       ) : articles.length === 0 ? (
-        <p className="text-gray-600">Nenhum artigo encontrado.</p>
+        <p className="text-gray-600 dark:text-gray-400">Nenhum artigo encontrado.</p>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -95,14 +95,14 @@ function PaginatedArticles({
                 className={`
                   px-4 py-2 rounded-lg font-semibold transition
                   ${page === 1 
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                    ? 'bg-gray-200 dark:bg-slate-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' 
                     : 'bg-blue-600 text-white hover:bg-blue-700'}
                 `}
               >
                 ← Anterior
               </button>
 
-              <span className="text-gray-700 font-medium">
+              <span className="text-gray-700 dark:text-gray-300 font-medium">
                 Página {page} de {totalPages}
               </span>
 
@@ -112,7 +112,7 @@ function PaginatedArticles({
                 className={`
                   px-4 py-2 rounded-lg font-semibold transition
                   ${page === totalPages 
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                    ? 'bg-gray-200 dark:bg-slate-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' 
                     : 'bg-blue-600 text-white hover:bg-blue-700'}
                 `}
               >

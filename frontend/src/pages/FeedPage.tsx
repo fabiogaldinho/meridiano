@@ -40,8 +40,8 @@ function FeedPage() {
   if (!feedName || !feedInfo) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Feed não encontrado</h1>
-        <a href="/" className="text-blue-600 hover:underline">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-4">Feed não encontrado</h1>
+        <a href="/" className="text-blue-600 dark:text-blue-400 hover:underline">
           Voltar para a home
         </a>
       </div>

@@ -85,3 +85,27 @@ class Brief(SQLModel, table=True):
     brief_markdown: str
     contributing_article_ids: Optional[str] = None  # JSON string
     feed_profile: str = Field(default="default", index=True)
+
+
+class User(SQLModel, table=True):
+    """User model for authentication."""
+    
+    __tablename__: ClassVar[str] = "users"
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, index=True, min_length=3, max_length=50)
+    email: str = Field(unique=True, index=True)
+    password_hash: str = Field(description="Bcrypt hash da senha")
+    
+    # Metadados
+    full_name: Optional[str] = Field(default=None, max_length=100)
+    is_active: bool = Field(default=True)
+    is_admin: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.now)
+    last_login: Optional[datetime] = Field(default=None)
+    
+    # Preferências (JSON string)
+    preferences: Optional[str] = Field(
+        default=None,
+        description="JSON string com preferências do usuário"
+    )

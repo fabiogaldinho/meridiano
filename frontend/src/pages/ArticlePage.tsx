@@ -77,14 +77,14 @@ function ArticlePage() {
   return (
         <div className="max-w-7xl mx-auto px-4 py-8">
             {/* Breadcrumb */}
-            <nav className="text-sm text-gray-600 mb-6">
-                <Link to="/" className="hover:text-blue-600">Home</Link>
+            <nav className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400">Home</Link>
                 <span className="mx-2">/</span>
-                <Link to={`/feeds/${article.feed_profile}`} className="hover:text-blue-600">
+                <Link to={`/feeds/${article.feed_profile}`} className="hover:text-blue-600 dark:hover:text-blue-400">
                     {feedMeta?.display_name || article.feed_profile}
                 </Link>
                 <span className="mx-2">/</span>
-                <span className="text-gray-800">{article.title}</span>
+                <span className="text-gray-800 dark:text-gray-100">{article.title}</span>
             </nav>
 
             {/* Hero Image */}
@@ -144,23 +144,27 @@ function ArticlePage() {
             </div>
 
             {/* Summary */}
-            <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4"><b>RESUMO</b></h2>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 mb-8">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4"><b>RESUMO</b></h2>
             
                 {article.processed_content && (
-                    <div 
-                        className="prose prose-lg max-w-none prose-p:text-gray-700"
-                        dangerouslySetInnerHTML={{ __html: article.processed_content }}
-                    />
+                    <div className="prose prose-base max-w-none prose-p:text-gray-700 dark:prose-p:text-gray-300 dark:prose-headings:text-gray-100 text-justify">
+                        <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeRaw]}
+                        >
+                        {article.processed_content}
+                        </ReactMarkdown>
+                    </div>
                 )}
             </div>
 
             {/* Raw Content */}
             {(article.formatted_content || article.raw_content) && (
-                <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-6">ARTIGO COMPLETO</h2>
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 mb-8">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6"><b>ARTIGO COMPLETO</b></h2>
                     
-                    <div className="prose prose-lg max-w-none prose-p:text-gray-700 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline">
+                    <div className="prose prose-lg max-w-none prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline dark:prose-headings:text-gray-100 dark:prose-strong:text-gray-200 dark:prose-li:text-gray-300">
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeRaw]}
@@ -180,24 +184,24 @@ function ArticlePage() {
             )}
 
             {/* Links Section */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">LINKS</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">LINKS</h2>
                 
                 <div className="space-y-4">
                     {/* Link Original */}
                     <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                             </svg>
                         </div>
                         <div className="flex-grow">
-                            <p className="text-sm font-semibold text-gray-800 mb-1">Link Original</p>
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Link Original</p>
                             <a 
                                 href={article.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline text-sm break-all"
+                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm break-all"
                             >
                                 {article.url}
                             </a>
@@ -207,15 +211,15 @@ function ArticlePage() {
                     {/* Link Marreta */}
                     {article.marreta && article.url_encoding && (
                         <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                                <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
                             <div className="flex-grow">
-                                <p className="text-sm font-semibold text-gray-800 mb-1">
+                                <p className="text-sm font-semibold dark:text-gray-100 text-gray-800 mb-1">
                                 Link via Marreta 
-                                    <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-normal">
+                                    <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-normal">
                                         Sem paywall
                                     </span>
                                 </p>
@@ -223,7 +227,7 @@ function ArticlePage() {
                                     href={article.url_encoding}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-green-600 hover:underline text-sm break-all">
+                                    className="text-green-600 dark:text-green-400 hover:underline text-sm break-all">
                                     {article.url_encoding}
                                 </a>
                             </div>

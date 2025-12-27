@@ -2,10 +2,10 @@
 
 function SkeletonArticleCard() {
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden animate-pulse min-w-[280px] max-w-[340px]">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden animate-pulse min-w-[280px] max-w-[340px]">
       
       {/* Imagem skeleton */}
-      <div className="h-40 bg-gradient-to-br from-gray-300 to-gray-200" />
+      <div className="h-40 bg-gradient-to-br from-gray-300 dark:from-slate-600 to-gray-200 dark:to-slate-700" />
 
       {/* Conteúdo */}
       <div className="p-6">

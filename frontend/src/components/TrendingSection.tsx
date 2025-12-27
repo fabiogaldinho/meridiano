@@ -94,7 +94,7 @@ function TrendingSection({
 
   return (
     <div className="my-12">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">
+        <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">
             <b>{title}</b>
         </h2>
 
@@ -128,8 +128,8 @@ function TrendingSection({
                     onClick={scrollLeft}
                     className="
                         absolute left-2 top-1/2 -translate-y-1/2
-                        bg-white/95 hover:bg-white
-                        text-gray-800 p-3 rounded-full shadow-lg
+                        bg-white/95 dark:bg-slate-800/95 hover:bg-white dark:hover:bg-slate-700
+                        text-gray-800 dark:text-gray-100 p-3 rounded-full shadow-lg
                         transition-all duration-300
                         opacity-0 group-hover:opacity-100
                         z-10
@@ -147,9 +147,9 @@ function TrendingSection({
                 <button
                     onClick={scrollRight}
                     className="
-                        absolute right-2 top-1/2 -translate-y-1/2
-                        bg-white/95 hover:bg-white
-                        text-gray-800 p-3 rounded-full shadow-lg
+                        absolute left-2 top-1/2 -translate-y-1/2
+                        bg-white/95 dark:bg-slate-800/95 hover:bg-white dark:hover:bg-slate-700
+                        text-gray-800 dark:text-gray-100 p-3 rounded-full shadow-lg
                         transition-all duration-300
                         opacity-0 group-hover:opacity-100
                         z-10
@@ -164,12 +164,12 @@ function TrendingSection({
 
             {/* Gradiente fade na direita */}
             {!loading && canScrollRight && (
-                <div className="absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none" />
+                <div className="absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-gray-50 dark:from-slate-900 to-transparent pointer-events-none" />
             )}
 
             {/* Gradiente fade na esquerda */}
             {!loading && canScrollLeft && (
-                <div className="absolute top-0 left-0 h-full w-20 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none" />
+                <div className="absolute top-0 left-0 h-full w-20 bg-gradient-to-r from-gray-50 dark:from-slate-900 to-transparent pointer-events-none" />
             )}
         </div>
     </div>
