@@ -1,18 +1,10 @@
 # simple-meridian/run_briefing.py
 
-import os
-import importlib
-import feedparser
-from datetime import datetime, timedelta
-import json
-import time
-import re
+import os, importlib, feedparser, json, time, re, anthropic, openai, argparse, sys
 import numpy as np
 from sklearn.cluster import KMeans
 from dotenv import load_dotenv
-import anthropic
-import openai
-import argparse
+from datetime import datetime, timedelta
 
 from utils import fetch_article_content_and_og_image
 
@@ -84,6 +76,45 @@ def send_telegram_notification(chat_id, message, parse_mode='HTML'):
         print(f"Warning: Failed to send Telegram notification: {e}")
 
 
+def is_quota_exceeded_error(exception: Exception) -> bool:
+    """
+    Verifica se a exceção é um erro de quota excedida da OpenAI.
+    """
+    error_str = str(exception).lower()
+    return 'insufficient_quota' in error_str
+
+
+def handle_quota_exceeded(error_context: str = ""):
+    """
+    Envia notificação no Telegram e encerra o script quando a quota da OpenAI é excedida.
+    """
+    print("\n" + "=" * 60)
+    print("ERRO CRÍTICO: Quota da OpenAI excedida!")
+    print("=" * 60)
+    if error_context:
+        print(f"Contexto: {error_context}")
+    print("O script será encerrado. Adicione créditos em: https://platform.openai.com/settings/organization/billing")
+    print("=" * 60 + "\n")
+    
+    # Notificar via Telegram
+    notification_message = f"""
+    <b>ERRO - Galdino News</b>
+
+    <b>Problema:</b> Quota da OpenAI excedida
+    <b>Contexto:</b> {error_context or 'N/A'}
+
+    O pipeline foi interrompido.
+    Adicione créditos em: https://platform.openai.com/settings/organization/billing
+"""
+    
+    # Usa o TELEGRAM_CHAT_ID do ambiente ou um padrão
+    admin_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+    if admin_chat_id:
+        send_telegram_notification(admin_chat_id, notification_message)
+    
+    sys.exit(1)
+
+
 def get_deepseek_embedding(text, model=config.EMBEDDING_MODEL):
     """Gets embeddings."""
     print(f"INFO: Attempting to get embedding for text snippet: '{text[:50]}...'")
@@ -106,6 +137,9 @@ def get_deepseek_embedding(text, model=config.EMBEDDING_MODEL):
               print(f"Warning: No embedding data in API response.")
               return None
     except Exception as e:
+         if is_quota_exceeded_error(e):
+            handle_quota_exceeded(f"geração de embedding com modelo {model}")
+
          print(f"Error calling Embedding API: {e}")
          return None
     
@@ -143,9 +177,6 @@ def _attempt_llm_call(prompt, model, system_prompt, max_tokens, temperature, max
     """
     Tenta fazer uma chamada LLM com retries.
     Esta é uma função auxiliar usada por call_llm.
-    
-    Retorna:
-        str: O conteúdo da resposta se bem-sucedido, None se falhou
     """
     
     for attempt in range(max_retries):
@@ -181,6 +212,9 @@ def _attempt_llm_call(prompt, model, system_prompt, max_tokens, temperature, max
                     print(f"  Empty response on attempt {attempt + 1}, will retry...")
 
             except Exception as e:
+                if is_quota_exceeded_error(e):
+                    handle_quota_exceeded(f"chamada LLM com modelo {model}")
+
                 if attempt == max_retries - 1:
                     print(f"  Error on attempt {attempt + 1}/{max_retries} with {model}: {e}")
                 else:
