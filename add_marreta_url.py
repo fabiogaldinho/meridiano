@@ -1,4 +1,5 @@
-from models import Article, get_session
+from models import Article
+from db import get_db_connection
 from sqlalchemy import text
 from sqlmodel import update, func
 
@@ -13,8 +14,8 @@ replaces = [
     ("#", "%23")
 ]
 
-with get_session() as session:
-    opcao = 2
+with get_db_connection() as session:
+    opcao = 3
 
     if opcao == 1:    
         try:
@@ -115,8 +116,6 @@ with get_session() as session:
         except Exception as e:
             print(f'Erro ao tentar adicionar a nova coluna marreita: {e}\n')
 
-
-    else:
         try:
             result = session.exec(text('PRAGMA table_info(articles);'))
             for row in result:
@@ -124,3 +123,18 @@ with get_session() as session:
 
         except Exception as e:
             print(f'Erro ao tentar adicionar a nova coluna marreita: {e}\n')
+    
+
+
+    else:
+        try:
+            print("Adicionando nova coluna 'rss_description'!")
+
+            session.exec(text('ALTER TABLE articles ADD COLUMN rss_description TEXT'))
+
+            session.commit()
+    
+        except Exception as e:
+            print(f'Erro ao tentar adicionar a nova coluna rss_description: {e}\n')
+        
+        print("Nova coluna 'rss_description' adicionada com sucesso!\n")

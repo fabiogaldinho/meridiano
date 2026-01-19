@@ -61,6 +61,14 @@ class Article(SQLModel, table=True):
     briefing_analyzed: bool = Field(default=False, index=True)
     url_encoding: str = Field(unique=True, index=True)
     marreta: Optional[bool] = Field(default=False, index=True)
+    rss_description: Optional[str] = Field(
+        default=None,
+        description="Description/summary from RSS feed, used for initial filtering"
+    )
+    newsletter_ids: Optional[str] = Field(
+        default=None,
+        description="JSON array of newsletter IDs where this article was used"
+    )
 
 
 class Brief(SQLModel, table=True):
@@ -85,6 +93,18 @@ class Brief(SQLModel, table=True):
     brief_markdown: str
     contributing_article_ids: Optional[str] = None  # JSON string
     feed_profile: str = Field(default="default", index=True)
+
+
+class Newsletter(SQLModel, table=True):
+    """Newsletter model representing daily news digests."""
+
+    __tablename__: ClassVar[str] = "newsletters"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    generated_at: datetime = Field(default_factory=datetime.now)
+    feed_profile: str = Field(default="default", index=True)
+    newsletter_markdown: str
+    contributing_article_ids: Optional[str] = None  # JSON string
 
 
 class User(SQLModel, table=True):

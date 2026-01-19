@@ -20,6 +20,9 @@ TELEGRAM_CHAT_ID = {
    169393478: 'https://galdinho.news' #Juninho
 }
 
+MIN_SCORE_NEWSLETTER = 6
+
+
 
 # Used in process_articles (operates globally, so uses default)
 PROMPT_ARTICLE_SUMMARY ="""Extraia os fatos principais desta notícia em 2-4 frases diretas.

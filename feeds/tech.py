@@ -32,6 +32,10 @@ TELEGRAM_CHAT_ID = {
 # FILTRO INICIAL PARA DECIDIR QUAL NOTÍCIA IMPORTAR
 MIN_INITIAL_FILTER_SCORE = 3
 
+MIN_SCORE_NEWSLETTER = 7
+
+
+
 PROMPT_INITIAL_FILTER = """Avalie rapidamente se este artigo de tecnologia vale processar.
 
 Título: {title}

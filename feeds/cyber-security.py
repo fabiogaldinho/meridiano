@@ -31,8 +31,11 @@ SCRAPING_MAX_AGE_DAYS_INITIAL = 3
 
 MIN_ARTICLES_FOR_BRIEFING = 10
 
-
 MIN_INITIAL_FILTER_SCORE = 3
+
+MIN_SCORE_NEWSLETTER = 4
+
+
 
 PROMPT_INITIAL_FILTER = """Avalie se este artigo de cibersegurança vale processar para alguém que:
 - Mantém servidor próprio com Docker

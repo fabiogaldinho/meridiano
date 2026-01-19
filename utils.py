@@ -1,9 +1,8 @@
-import trafilatura
-import requests
+import trafilatura, requests, logging
 from datetime import datetime
 from bs4 import BeautifulSoup
-import logging
 from urllib.parse import urljoin
+from pathlib import Path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -199,3 +198,23 @@ def scrape_single_article_details(article_url):
         'image_url': final_image_url,
         'error': error_message
     }
+
+
+def get_active_feeds():
+    """
+    Detecta feeds ativos baseado nos arquivos .py em feeds/
+    Retorna lista como ['brasil', 'cyber-security', 'gaming', 'tech']
+    """
+    feeds_dir = Path(__file__).parent / "feeds"
+    
+    if not feeds_dir.exists():
+        logger.warning(f"Pasta feeds/ não encontrada em {feeds_dir}")
+        return []
+    
+    feeds = []
+    for file in feeds_dir.glob("*.py"):
+        if file.name.startswith("__"):
+            continue
+        feeds.append(file.stem)
+    
+    return sorted(feeds)

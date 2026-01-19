@@ -993,8 +993,8 @@ if __name__ == "__main__":
     parser.add_argument(
         '--feed',
         type=str,
-        default=config.DEFAULT_FEED_PROFILE, # Use default from base config
-        help=f"Specify the feed profile name (e.g., brazil, tech). Default: '{config.DEFAULT_FEED_PROFILE}'."
+        default=None,
+        help=f"Specify the feed profile name (e.g., brazil, tech)."
     )
     parser.add_argument(
         '--rate-articles',
@@ -1032,12 +1032,42 @@ if __name__ == "__main__":
         action='store_true',
         help='Run preparation stages only (scrape, process, rate) without generating brief.'
     )
+    parser.add_argument(
+        '--batch-prepare',
+        dest='batch_prepare',
+        action='store_true',
+        help='Run preparation stages using Batch API. Runs: scrape → batch_filter → fetch_content → batch_summary → batch_embedding → batch_rating.'
+    )
 
     args = parser.parse_args()
 
-    # --- Load Feed Specific Config ---
+    # --- Validação: --batch-prepare não precisa de --feed ---
+    if args.batch_prepare:
+        print(f"\nMeridian Batch Pipeline - {datetime.now()}")
+        print("Initializing database...")
+        database.init_db()
+        
+        from batch import executar_pipeline_batch
+        resultado = executar_pipeline_batch()
+        print(f"\nResultado do pipeline batch: {resultado}")
+        print(f"\nRun Finished - {datetime.now()}")
+        sys.exit(0)  # Sai aqui, não continua o resto
+
+    # --- Para outros comandos, --feed é obrigatório ---
+    if not args.feed:
+        print("ERROR: --feed é obrigatório para este comando.")
+        print("Exemplo: python run_briefing.py --feed gaming --prepare")
+        print("\nFeeds disponíveis:")
+        from utils import get_active_feeds
+        for feed in get_active_feeds():
+            print(f"  - {feed}")
+        sys.exit(1)
+
+    # --- Load Feed Specific Config (só chega aqui se tem --feed) ---
     feed_profile_name = args.feed
     feed_module_name = f"feeds.{feed_profile_name}"
+    feed_config = None
+
     try:
         feed_config = importlib.import_module(feed_module_name)
         print(f"Loaded feed configuration: {feed_module_name}")
@@ -1074,7 +1104,7 @@ if __name__ == "__main__":
         effective_config.RSS_FEEDS = rss_feeds
 
     # Default to running all if no specific stage OR --all is provided
-    should_run_all = args.run_all or not (args.scrape or args.process or args.generate or args.rate)
+    should_run_all = args.run_all or not (args.scrape or args.process or args.generate or args.rate or args.batch_prepare or args.prepare)
 
     # Apenas scrapping e processamento
     should_prepare = args.prepare
