@@ -12,7 +12,7 @@ from sqlmodel import and_, asc, desc, func, or_, select
 from sqlalchemy import text
 
 import config_base as config
-from models import Article, Brief
+from models import Article, Brief, Newsletter
 from db import get_db_connection
 
 logger = logging.getLogger(__name__)
@@ -699,6 +699,132 @@ def get_articles_pending_rating(
         
         articles = session.exec(statement).all()
         return [_article_to_dict(article) for article in articles]
+
+
+def get_articles_for_newsletter(
+    feed_profile: str,
+    min_score: int,
+    days_back: int = 3,
+    limit: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    Busca artigos elegíveis para newsletter.
+    
+    Critérios:
+    - feed_profile específico
+    - published_date nos últimos X dias
+    - impact_score >= min_score
+    - newsletter_ids IS NULL (nunca usado em newsletter)
+    - Ordenado por impact_score DESC
+    - Limitado a top N
+    """
+    from datetime import timedelta
+    
+    with get_db_connection() as session:
+        cutoff_date = datetime.now() - timedelta(days=days_back)
+        
+        statement = (
+            select(Article)
+            .where(
+                and_(
+                    Article.feed_profile == feed_profile,
+                    Article.published_date >= cutoff_date,
+                    Article.impact_score >= min_score,
+                    Article.newsletter_ids.is_(None)
+                )
+            )
+            .order_by(desc(Article.impact_score), desc(Article.published_date))
+            .limit(limit)
+        )
+        
+        articles = session.exec(statement).all()
+        return [_article_to_dict(article) for article in articles]
+
+def save_newsletter(
+    newsletter_markdown: str,
+    contributing_article_ids: List[int],
+    feed_profile: str
+) -> int:
+    """Salva a newsletter gerada e atualiza os artigos incluídos."""
+    with get_db_connection() as session:
+        from models import Newsletter
+        
+        ids_json = json.dumps(contributing_article_ids)
+        newsletter = Newsletter(
+            newsletter_markdown=newsletter_markdown,
+            contributing_article_ids=ids_json,
+            feed_profile=feed_profile,
+            generated_at=datetime.now(),
+        )
+        
+        session.add(newsletter)
+        session.commit()
+        session.refresh(newsletter)
+        
+        print(f"Saved newsletter [{feed_profile}] with ID: {newsletter.id}")
+        
+        # Atualizar cada artigo com o newsletter_id
+        for article_id in contributing_article_ids:
+            statement = select(Article).where(Article.id == article_id)
+            article = session.exec(statement).first()
+            
+            if article:
+                current_ids = []
+                if article.newsletter_ids:
+                    try:
+                        current_ids = json.loads(article.newsletter_ids)
+                    except json.JSONDecodeError:
+                        current_ids = []
+                
+                if newsletter.id not in current_ids:
+                    current_ids.append(newsletter.id)
+                    article.newsletter_ids = json.dumps(current_ids)
+                    session.add(article)
+        
+        session.commit()
+        
+        return newsletter.id
+
+
+def _newsletter_to_dict(newsletter: Newsletter) -> Dict[str, Any]:
+    """Convert Newsletter model to dictionary."""
+    if not newsletter:
+        return None
+    
+    return newsletter.model_dump(
+        include={
+            "id",
+            "generated_at",
+            "feed_profile",
+            "newsletter_markdown",
+            "contributing_article_ids",
+        }
+    )
+
+
+def get_all_newsletters(
+    feed_profile: Optional[str] = None,
+    limit: int = 50
+) -> List[Dict[str, Any]]:
+    """Busca newsletters, opcionalmente filtradas por feed_profile."""
+    with get_db_connection() as session:
+        statement = select(Newsletter)
+        
+        if feed_profile:
+            statement = statement.where(Newsletter.feed_profile == feed_profile)
+        
+        statement = statement.order_by(desc(Newsletter.generated_at)).limit(limit)
+        
+        newsletters = session.exec(statement).all()
+        return [_newsletter_to_dict(n) for n in newsletters]
+
+
+def get_newsletter_by_id(newsletter_id: int) -> Optional[Dict[str, Any]]:
+    """Busca uma newsletter específica por ID."""
+    with get_db_connection() as session:
+        statement = select(Newsletter).where(Newsletter.id == newsletter_id)
+        newsletter = session.exec(statement).first()
+        return _newsletter_to_dict(newsletter) if newsletter else None
 
 
 

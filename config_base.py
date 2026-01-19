@@ -67,6 +67,7 @@ CLUSTER_MODEL = "gpt-5-mini"
 BRIEF_MODEL = "claude-sonnet-4-5-20250929"
 FILTER_MODEL = "gpt-4o-mini"
 EMBEDDING_MODEL = "text-embedding-3-small"
+NEWSLETTER_MODEL = "claude-sonnet-4-5-20250929"
 
 # Approximate number of clusters to aim for. Fine-tune based on results.
 # Alternatively, use algorithms like DBSCAN that don't require specifying k.
@@ -105,3 +106,25 @@ FLASK_SECRET_KEY = os.getenv(
     "FLASK_SECRET_KEY", "dev-key-change-in-production"
 )
 FLASK_ENV = os.getenv("FLASK_ENV", "development")
+
+
+# Prompt para gerar item de newsletter
+DEFAULT_MIN_SCORE = 6
+DEFAULT_LIMIT = 10
+PROMPT_NEWSLETTER = """Você é um editor de newsletter de tecnologia.
+
+Sua tarefa: criar um item de newsletter a partir do artigo abaixo.
+
+REGRAS:
+1. Gere um título curto e direto em português brasileiro
+2. Escreva um resumo conciso e fluido dos pontos principais do artigo
+3. Use linguagem clara, sem jargão desnecessário
+4. Seja informativo, não sensacionalista
+5. O título + resumo DEVEM ter entre 420-600 caracteres no total
+
+FORMATO DE SAÍDA (siga exatamente):
+**Título aqui:** Resumo aqui.
+
+ARTIGO:
+{raw_content}
+"""
