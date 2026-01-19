@@ -61,7 +61,7 @@ MIN_IMPACT_SCORE_FOR_BRIEFING = 5
 # Model for summarization and analysis (check Deepseek docs for latest models)
 #DEEPSEEK_CHAT_MODEL = "deepseek-chat"
 CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
-SUMMARY_MODEL = "gpt-5-mini"
+SUMMARY_MODEL = "gpt-5.2"
 RATING_MODEL = "gpt-5-mini"
 CLUSTER_MODEL = "gpt-5-mini"
 BRIEF_MODEL = "claude-sonnet-4-5-20250929"
@@ -75,13 +75,17 @@ N_CLUSTERS = 10  # Example, adjust as needed
 # --- Filtering Settings ---
 MIN_INITIAL_FILTER_SCORE = 3
 
+# --- Newsletter ---
+MIN_SCORE_NEWSLETTER = 5
+NEWSLETTER_TOP_N = 10
+
 # Minimum number of articles required to attempt clustering/briefing
 MIN_ARTICLES_FOR_BRIEFING = 15
 
 ARTICLES_PER_PAGE = 15
 
 MANUALLY_ADDED_PROFILE_NAME = 'manual'
-DEFAULT_FEED_PROFILE = 'default'
+#DEFAULT_FEED_PROFILE = 'default'
 
 SCRAPING_MAX_AGE_DAYS_INITIAL = 7
 SCRAPING_MAX_AGE_DAYS_NORMAL = 3

@@ -88,7 +88,8 @@ def _article_to_dict(article: Article) -> Dict[str, Any]:
             "initial_filter_score",
             "briefing_analyzed",
             "url_encoding",
-            "marreta"
+            "marreta",
+            "rss_description"
         }
     )
 
@@ -304,7 +305,8 @@ def add_article(
     initial_filter_score: Optional[int] = None,
     marreta: bool = False,
     briefing_analyzed: bool = False,
-    formatted_content: Optional[str] = None
+    formatted_content: Optional[str] = None,
+    rss_description: Optional[str] = None
 ) -> Optional[int]:
     """Adds a new article with optional image URL."""
     with get_db_connection() as session:
@@ -336,7 +338,8 @@ def add_article(
                 initial_filter_score=initial_filter_score,
                 url_encoding=url_encoding,
                 marreta=marreta,
-                briefing_analyzed=briefing_analyzed
+                briefing_analyzed=briefing_analyzed,
+                rss_description=rss_description
             )
             session.add(article)
             session.commit()
@@ -371,6 +374,24 @@ def get_unprocessed_articles(
             .limit(limit)
         )
 
+        articles = session.exec(statement).all()
+        return [_article_to_dict(article) for article in articles]
+
+
+def get_articles_pending_filter(feed_profile: Optional[str] = None, limit: int = 1000) -> List[Dict[str, Any]]:
+    """
+    Busca artigos que ainda não passaram pelo filtro inicial (initial_filter_score=NULL).
+    """
+    with get_db_connection() as session:
+        statement = select(Article).where(
+            Article.initial_filter_score.is_(None)  # type: ignore
+        )
+        
+        if feed_profile:
+            statement = statement.where(Article.feed_profile == feed_profile)
+        
+        statement = statement.order_by(desc(Article.published_date)).limit(limit)
+        
         articles = session.exec(statement).all()
         return [_article_to_dict(article) for article in articles]
 
@@ -525,6 +546,160 @@ def get_distinct_feed_profiles(table: str = "articles") -> List[str]:
             result = session.exec(statement).all()
 
         return list(result)
+
+
+def update_article_filter_score(article_id: int, score: int) -> None:
+    """Atualiza o initial_filter_score de um artigo."""
+    with get_db_connection() as session:
+        statement = select(Article).where(Article.id == article_id)
+        article = session.exec(statement).first()
+        if article:
+            article.initial_filter_score = score
+            session.add(article)
+            session.commit()
+
+
+def get_approved_articles_without_content(feed_profile: Optional[str] = None, limit: int = 500) -> List[Dict[str, Any]]:
+    """
+    Busca artigos aprovados no filtro (score >= 3) mas sem raw_content.
+    """
+    with get_db_connection() as session:
+        statement = select(Article).where(
+            and_(
+                Article.initial_filter_score >= 3,          # type: ignore
+                or_(
+                    Article.raw_content.is_(None),          # type: ignore
+                    Article.raw_content == ""
+                )
+            )
+        )
+        
+        if feed_profile:
+            statement = statement.where(Article.feed_profile == feed_profile)
+        
+        statement = statement.order_by(desc(Article.published_date)).limit(limit)
+        
+        articles = session.exec(statement).all()
+        return [_article_to_dict(article) for article in articles]
+
+
+def update_article_content(
+    article_id: int,
+    raw_content: str,
+    image_url: Optional[str] = None,
+    marreta: bool = False
+) -> None:
+    """
+    Atualiza um artigo com o conteúdo extraído.
+    """
+    with get_db_connection() as session:
+        statement = select(Article).where(Article.id == article_id)
+        article = session.exec(statement).first()
+        if article:
+            article.raw_content = raw_content
+            article.image_url = image_url
+            article.marreta = marreta
+            session.add(article)
+            session.commit()
+
+
+def get_articles_pending_summary(
+    feed_profile: str = None, limit: int = 500
+) -> List[Dict[str, Any]]:
+    """Gets articles with content but not yet summarized."""
+    with get_db_connection() as session:
+        filters = [
+            Article.raw_content.is_not(None),
+            Article.raw_content != "",
+            Article.processed_content.is_(None),
+            or_(
+                Article.initial_filter_score.is_(None),
+                Article.initial_filter_score >= 3
+            )
+        ]
+        
+        if feed_profile:
+            filters.append(Article.feed_profile == feed_profile)
+        
+        statement = (
+            select(Article)
+            .where(and_(*filters))
+            .order_by(desc(Article.fetched_at))
+            .limit(limit)
+        )
+        
+        articles = session.exec(statement).all()
+        return [_article_to_dict(article) for article in articles]
+
+
+def get_articles_pending_embedding(
+    feed_profile: str = None, limit: int = 500
+) -> List[Dict[str, Any]]:
+    """Gets articles with summary but not yet embedded."""
+    with get_db_connection() as session:
+        filters = [
+            Article.processed_content.is_not(None),
+            Article.processed_content != "",
+            Article.embedding.is_(None),
+            or_(
+                Article.initial_filter_score.is_(None),
+                Article.initial_filter_score >= 3
+            )
+        ]
+        
+        if feed_profile:
+            filters.append(Article.feed_profile == feed_profile)
+        
+        statement = (
+            select(Article)
+            .where(and_(*filters))
+            .order_by(desc(Article.processed_at))
+            .limit(limit)
+        )
+        
+        articles = session.exec(statement).all()
+        return [_article_to_dict(article) for article in articles]
+    
+
+def update_article_embedding(article_id: int, embedding: List[float]) -> None:
+    """Updates an article with its embedding vector."""
+    with get_db_connection() as session:
+        statement = select(Article).where(Article.id == article_id)
+        article = session.exec(statement).first()
+        if article:
+            article.embedding = json.dumps(embedding)
+            session.add(article)
+            session.commit()
+
+
+def get_articles_pending_rating(
+    feed_profile: str = None, limit: int = 500
+) -> List[Dict[str, Any]]:
+    """Gets articles with embedding but not yet rated."""
+    with get_db_connection() as session:
+        filters = [
+            Article.processed_content.is_not(None),
+            Article.embedding.is_not(None),
+            Article.impact_score.is_(None),
+            or_(
+                Article.initial_filter_score.is_(None),
+                Article.initial_filter_score >= 3
+            )
+        ]
+        
+        if feed_profile:
+            filters.append(Article.feed_profile == feed_profile)
+        
+        statement = (
+            select(Article)
+            .where(and_(*filters))
+            .order_by(desc(Article.processed_at))
+            .limit(limit)
+        )
+        
+        articles = session.exec(statement).all()
+        return [_article_to_dict(article) for article in articles]
+
 
 
 def init_db() -> None:
