@@ -743,7 +743,8 @@ def get_articles_for_newsletter(
 def save_newsletter(
     newsletter_markdown: str,
     contributing_article_ids: List[int],
-    feed_profile: str
+    feed_profile: str,
+    featured_image: str
 ) -> int:
     """Salva a newsletter gerada e atualiza os artigos incluídos."""
     with get_db_connection() as session:
@@ -755,6 +756,7 @@ def save_newsletter(
             contributing_article_ids=ids_json,
             feed_profile=feed_profile,
             generated_at=datetime.now(),
+            featured_image=featured_image
         )
         
         session.add(newsletter)
@@ -798,6 +800,7 @@ def _newsletter_to_dict(newsletter: Newsletter) -> Dict[str, Any]:
             "feed_profile",
             "newsletter_markdown",
             "contributing_article_ids",
+            "featured_image"
         }
     )
 

@@ -125,8 +125,6 @@ with get_db_connection() as session:
             print(f'Erro ao tentar adicionar a nova coluna marreita: {e}\n')
     
 
-
-    else:
         try:
             print("Adicionando nova coluna 'rss_description'!")
 
@@ -138,3 +136,41 @@ with get_db_connection() as session:
             print(f'Erro ao tentar adicionar a nova coluna rss_description: {e}\n')
         
         print("Nova coluna 'rss_description' adicionada com sucesso!\n")
+
+        try:
+            print("Adicionando nova coluna 'featured_image'!")
+
+            session.exec(text('ALTER TABLE newsletters ADD COLUMN featured_image TEXT'))
+
+            session.commit()
+    
+        except Exception as e:
+            print(f'Erro ao tentar adicionar a nova coluna featured_image: {e}\n')
+        
+        print("Nova coluna 'featured_image' adicionada com sucesso!\n")
+
+        try:
+            print("Replacing 'NEWSLETTER'!")
+
+            session.exec(text("UPDATE newsletters SET newsletter_markdown = REPLACE(newsletter_markdown, 'NEWSLETTER', 'Newsletter')"))
+
+            session.commit()
+    
+        except Exception as e:
+            print(f'Erro ao tentar replace NEWSLETTER: {e}\n')
+        
+        print("Replacing 'NEWSLETTER' SUCESS!\n")
+
+
+    else:
+        try:
+            print("Replacing 'NEWSLETTER'!")
+
+            session.exec(text("UPDATE articles SET newsletter_ids = NULL WHERE newsletter_ids IS NOT NULL;"))
+
+            session.commit()
+    
+        except Exception as e:
+            print(f'Erro ao tentar replace NEWSLETTER: {e}\n')
+        
+        print("Replacing 'NEWSLETTER' SUCESS!\n")

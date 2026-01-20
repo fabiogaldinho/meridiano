@@ -32,3 +32,26 @@ html {
 .animate-shake {
   animation: shake 0.5s ease-in-out;
 }
+
+.prose hr {
+    @apply border-gray-200  my-3;
+}
+
+.dark .prose hr {
+    @apply border-gray-700  my-3;
+}
+
+body {
+    background-color: #ECECEE;
+}
+
+.dark body {
+    background-color: #101628;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

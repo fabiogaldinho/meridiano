@@ -105,6 +105,7 @@ class Newsletter(SQLModel, table=True):
     feed_profile: str = Field(default="default", index=True)
     newsletter_markdown: str
     contributing_article_ids: Optional[str] = None  # JSON string
+    featured_image: Optional[str] = Field(default=None)
 
 
 class User(SQLModel, table=True):

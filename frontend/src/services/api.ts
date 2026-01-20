@@ -1,5 +1,5 @@
 // src/services/api.ts
-import type { Briefing, Article, Feed, LoginResponse, User } from '../types';
+import type { Briefing, Article, Feed, LoginResponse, User, Newsletter } from '../types';
 
 
 /**
@@ -158,4 +158,38 @@ export async function signup(
   }
 
   return await response.json();
+}
+
+
+/**
+ * Busca todas as newsletters, opcionalmente filtradas por feed_profile
+ */
+export async function getNewsletters(feedProfile?: string): Promise<Newsletter[]> {
+    let url = `/api/newsletters`;
+    if (feedProfile) {
+        url += `?feed_profile=${feedProfile}`;
+    }
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`Erro ao buscar newsletters: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.newsletters;
+}
+
+
+/**
+ * Busca uma newsletter específica por ID
+ */
+export async function getNewsletter(id: number): Promise<Newsletter> {
+    const response = await fetch(`/api/newsletters/${id}`);
+
+    if (!response.ok) {
+        throw new Error(`Erro ao buscar newsletter ${id}: ${response.status}`);
+    }
+
+    return await response.json();
 }

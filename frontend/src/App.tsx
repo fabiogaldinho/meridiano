@@ -10,6 +10,7 @@ import BriefingPage from './pages/BriefingPage';
 import ArticlePage from './pages/ArticlePage';
 import SignupPage from './pages/SignupPage';
 import ScrollToTop from './components/ScrollToTop';
+import NewsletterPage from './pages/NewsletterPage';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
                       <Route path="/feeds/:feedName" element={<FeedPage />} />
                       <Route path="/briefings/:id" element={<BriefingPage />} />
                       <Route path="/articles/:id" element={<ArticlePage />} />
+                      <Route path="/newsletters/:id" element={<NewsletterPage />} />
                       
                       {/* Rota 404 */}
                       <Route path="*" element={<Navigate to="/" replace />} />

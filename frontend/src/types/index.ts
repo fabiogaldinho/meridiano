@@ -45,6 +45,19 @@ export interface Feed {
 
 
 // ============================================
+
+export interface Newsletter {
+    id: number;
+    generated_at: string;
+    feed_profile: string;
+    newsletter_markdown: string;
+    contributing_article_ids: string;
+    preview?: string;
+    featured_image: string | null;
+}
+
+
+// ============================================
 // AUTH TYPES
 // ============================================
 export interface User {

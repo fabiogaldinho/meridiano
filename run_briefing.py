@@ -1038,6 +1038,12 @@ if __name__ == "__main__":
         action='store_true',
         help='Run preparation stages using Batch API. Runs: scrape → batch_filter → fetch_content → batch_summary → batch_embedding → batch_rating.'
     )
+    parser.add_argument(
+        '--newsletter',
+        dest='newsletter',
+        action='store_true',
+        help='Generate newsletter using Anthropic Batch API. Optional: use with --feed to generate for specific feed only.'
+    )
 
     args = parser.parse_args()
 
@@ -1052,6 +1058,24 @@ if __name__ == "__main__":
         print(f"\nResultado do pipeline batch: {resultado}")
         print(f"\nRun Finished - {datetime.now()}")
         sys.exit(0)  # Sai aqui, não continua o resto
+    
+
+    # --- Newsletter via Batch API ---
+    if args.newsletter:
+        print(f"\nMeridian Newsletter Pipeline - {datetime.now()}")
+        print("Initializing database...")
+        database.init_db()
+        
+        from newsletter import executar_pipeline_newsletter
+        
+        # --feed é opcional para newsletter
+        feed_especifico = args.feed if args.feed else None
+        
+        resultado = executar_pipeline_newsletter(feed_especifico)
+        print(f"\nResultado do pipeline newsletter: {resultado}")
+        print(f"\nRun Finished - {datetime.now()}")
+        sys.exit(0)
+        
 
     # --- Para outros comandos, --feed é obrigatório ---
     if not args.feed:

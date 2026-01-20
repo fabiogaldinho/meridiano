@@ -278,3 +278,53 @@ def get_feeds():
         'feeds': feeds_list,
         'count': len(feeds_list)
     })
+
+
+@api_bp.route('/newsletters', methods=['GET'])
+def get_newsletters():
+    """
+    Retorna lista de newsletters com preview.
+    """
+    feed_profile = request.args.get('feed_profile', None)
+    limit = min(int(request.args.get('limit', 20)), 100)
+    
+    newsletters = database.get_all_newsletters(
+        feed_profile=feed_profile if feed_profile else None
+    )
+    
+    newsletters = newsletters[:limit]
+    
+    newsletters_summary = []
+    for nl in newsletters:
+        newsletters_summary.append({
+            'id': nl['id'],
+            'generated_at': nl['generated_at'],
+            'feed_profile': nl['feed_profile'],
+            'preview': extract_preview_without_title(nl['newsletter_markdown'], 200),
+            'featured_image': nl.get('featured_image')
+        })
+    
+    return jsonify({
+        'newsletters': newsletters_summary,
+        'count': len(newsletters_summary)
+    })
+
+
+@api_bp.route('/newsletters/<int:newsletter_id>', methods=['GET'])
+def get_newsletter(newsletter_id):
+    """
+    Retorna uma newsletter específica pelo ID.
+    """
+    newsletter = database.get_newsletter_by_id(newsletter_id)
+    
+    if newsletter is None:
+        return jsonify({'error': 'Newsletter not found'}), 404
+    
+    return jsonify({
+        'id': newsletter['id'],
+        'generated_at': newsletter['generated_at'],
+        'feed_profile': newsletter['feed_profile'],
+        'newsletter_markdown': newsletter['newsletter_markdown'],
+        'contributing_article_ids': newsletter['contributing_article_ids'],
+        'featured_image': newsletter.get('featured_image')
+    })
