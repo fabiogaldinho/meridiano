@@ -188,7 +188,7 @@ Você recebeu análises de grupos de notícias relacionadas:
 
 Escreva um resumo em Markdown seguindo esta estrutura:
 
-[Parágrafo de abertura: 2-3 frases sobre os 3-4 temas mais importantes.]
+[Parágrafo de abertura: 2-3 frases sobre os 3-4 temas mais importantes. Comece referenciando que é um resumo semanal como "Esta semana trouxe..." ou "A semana trouxe..." ou uma variação.]
 
 ### [Tema 1 - título direto e descritivo]
 

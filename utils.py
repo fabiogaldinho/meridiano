@@ -228,12 +228,14 @@ def similaridade_cosseno(emb1: list, emb2: list) -> float:
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def deduplicar_artigos(artigos: list, threshold: float = 0.85) -> list:
+def deduplicar_artigos(artigos: list, threshold: float = 0.85, retornar_removidos: bool = False) -> list | tuple[list, list]:
     """
     Remove artigos duplicados baseado na similaridade de embeddings.
     Mantém o artigo com maior impact_score de cada grupo similar.
     """
     if len(artigos) <= 1:
+        if retornar_removidos:
+            return artigos, []
         return artigos
     
     # Parse embeddings
@@ -248,6 +250,7 @@ def deduplicar_artigos(artigos: list, threshold: float = 0.85) -> list:
     
     # Marcar artigos a remover
     remover = set()
+    ids_removidos = []
     
     for i, art1 in enumerate(artigos):
         if i in remover or art1['_embedding'] is None:
@@ -266,9 +269,11 @@ def deduplicar_artigos(artigos: list, threshold: float = 0.85) -> list:
                 
                 if score1 >= score2:
                     remover.add(j)
+                    ids_removidos.append(art2['id'])
                     logger.info(f"  Duplicado: '{art2['title'][:50]}...' (sim={sim:.2f}) -> removido")
                 else:
                     remover.add(i)
+                    ids_removidos.append(art1['id'])
                     logger.info(f"  Duplicado: '{art1['title'][:50]}...' (sim={sim:.2f}) -> removido")
                     break  # art1 foi removido, sai do loop interno
     
@@ -280,4 +285,7 @@ def deduplicar_artigos(artigos: list, threshold: float = 0.85) -> list:
             resultado.append(artigo)
     
     logger.info(f"  Deduplicação: {len(artigos)} -> {len(resultado)} artigos")
+
+    if retornar_removidos:
+        return resultado, ids_removidos
     return resultado

@@ -69,6 +69,10 @@ class Article(SQLModel, table=True):
         default=None,
         description="JSON array of newsletter IDs where this article was used"
     )
+    newsletter_deduplicated_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when article was excluded by deduplication in newsletter"
+    )
 
 
 class Brief(SQLModel, table=True):

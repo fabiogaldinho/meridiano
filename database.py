@@ -731,6 +731,7 @@ def get_articles_for_newsletter(
                     Article.published_date >= cutoff_date,
                     Article.impact_score >= min_score,
                     Article.newsletter_ids.is_(None)
+                    Article.newsletter_deduplicated_at.is_(None)
                 )
             )
             .order_by(desc(Article.impact_score), desc(Article.published_date))
@@ -871,6 +872,28 @@ def get_articles_for_weekly_briefing(
         
         articles = session.exec(statement).all()
         return [_article_to_dict(article) for article in articles]
+
+
+def mark_articles_newsletter_deduplicated(article_ids: List[int]) -> int:
+    """
+    Marca artigos como excluídos por deduplicação na newsletter.
+    """
+    if not article_ids:
+        return 0
+    
+    with get_db_connection() as session:
+        count = 0
+        for article_id in article_ids:
+            statement = select(Article).where(Article.id == article_id)
+            article = session.exec(statement).first()
+            
+            if article:
+                article.newsletter_deduplicated_at = datetime.now()
+                session.add(article)
+                count += 1
+        
+        session.commit()
+        logger.info(f"Marcados {count} artigos como deduplicados para newsletter")
 
 
 

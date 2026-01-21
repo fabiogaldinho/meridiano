@@ -60,7 +60,7 @@ function FeedSection({ feedProfile, title }: FeedSectionProps) {
       {newsletter && (
         <a 
           href={`/newsletters/${newsletter.id}`}
-          className="block mb-8 group -mx-6 md:-mx-12 lg:-mx-16 dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] rounded-2xl"
+          className="block mb-8 group -mx-3 md:-mx-12 lg:-mx-16 dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] rounded-2xl"
         >
           <div className="relative rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             {/* Background Image */}

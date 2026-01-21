@@ -67,7 +67,11 @@ def coletar_artigos_para_newsletter() -> dict:
         logger.info(f"  {feed_name}: {len(artigos)} artigos brutos (min_score={feed_config['min_score']})")
 
         # Deduplicar
-        artigos = deduplicar_artigos(artigos, threshold=0.85)
+        artigos, ids_removidos = deduplicar_artigos(artigos, threshold=0.85, retornar_removidos=True)
+
+        # Marcar artigos deduplicados no banco
+        if ids_removidos:
+            database.mark_articles_newsletter_deduplicated(ids_removidos)
 
         # Aplicar limite após deduplicação
         artigos = artigos[:feed_config["limit"]]

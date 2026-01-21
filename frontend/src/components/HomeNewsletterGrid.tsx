@@ -81,7 +81,7 @@ function HomeNewsletterGrid() {
 
   if (loading) {
     return (
-      <div className="my-8 -mx-6 md:-mx-12 lg:-mx-16">
+      <div className="my-8 -mx-3 md:-mx-12 lg:-mx-16">
         <div className="grid grid-cols-4 gap-2">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-[130px] rounded-xl bg-gray-200 dark:bg-slate-700 animate-pulse" />
@@ -94,7 +94,7 @@ function HomeNewsletterGrid() {
   if (newsletters.length === 0) return null;
 
   return (
-    <div className="mb-8 -mx-6 md:-mx-12 lg:-mx-16 relative group dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] rounded-2xl">
+    <div className="mb-8 -mx-3 md:-mx-12 lg:-mx-16 relative group dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] rounded-2xl">
       <div 
         ref={scrollRef}
         onScroll={checkScroll}
