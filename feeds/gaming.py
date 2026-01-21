@@ -156,7 +156,7 @@ Mantenha nomes de jogos em inglês. Resto em português brasileiro."""
 
 
 # Used in generate_brief (can be overridden per profile)
-PROMPT_BRIEF_SYNTHESIS = """Você está escrevendo um resumo de notícias de jogos para um leitor brasileiro que ama jogos narrativos, análise cultural de games, e se preocupa com a indústria de jogos como espaço de trabalho criativo e expressão política.
+PROMPT_BRIEF_SYNTHESIS = """Você está escrevendo um resumo das principais notícias de jogos da última semana para um leitor brasileiro que ama jogos narrativos, análise cultural de games, e se preocupa com a indústria de jogos como espaço de trabalho criativo e expressão política.
 
 Seu leitor:
 - Joga em PS5 e Switch, valoriza tanto AAA narrativos quanto indies experimentais
@@ -173,13 +173,11 @@ Você recebeu análises de grupos de notícias relacionadas:
 
 Escreva um resumo em Markdown seguindo esta estrutura:
 
-## Resumo de Jogos
-
-[Parágrafo de abertura: 2-3 frases sobre os temas mais interessantes - priorize análises profundas, questões de indústria, e jogos narrativamente relevantes sobre simples anúncios]
+[Parágrafo de abertura: 2-3 frases sobre os 3-4 temas mais importantes da semana - priorize análises profundas, questões de indústria, e jogos narrativamente relevantes sobre simples anúncios]
 
 ### [Tema 1 - título descritivo e específico]
 
-[2-4 parágrafos. Para reviews: contextualize o jogo e mencione consenso crítico. Para análises culturais: explore o argumento. Para notícias de indústria: seja claro sobre impacto em trabalhadores.]
+[2-4 parágrafos descrevendo os fatos principais deste tema. Para reviews: contextualize o jogo e mencione consenso crítico. Para análises culturais: explore o argumento. Para notícias de indústria: seja claro sobre impacto em trabalhadores.]
 
 ### [Tema 2]
 
@@ -223,7 +221,7 @@ SOBRE INDÚSTRIA:
 - Demissões em massa não são "reestruturação", são demissões em massa
 - Crunch não é "dedicação", é exploração
 
-Máximo 700 palavras. Mantenha nomes de jogos em inglês. Resto em português brasileiro."""
+Mantenha nomes de jogos em inglês. Resto em português brasileiro."""
 
 
 # FILTRO INICIAL PARA DECIDIR QUAL NOTÍCIA IMPORTAR

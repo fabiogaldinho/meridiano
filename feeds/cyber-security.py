@@ -174,7 +174,7 @@ Responda em português brasileiro."""
 # ============================================================================
 # SÍNTESE DO BRIEFING
 # ============================================================================
-PROMPT_BRIEF_SYNTHESIS = """Você está escrevendo um resumo de cibersegurança para uma leitora específica.
+PROMPT_BRIEF_SYNTHESIS = """Você está escrevendo um resumo das principais notícias de cibersegurança da última semana para uma leitora específica.
 
 Perfil da leitora:
 - 37 anos, trabalha com QA em Portugal
@@ -192,16 +192,11 @@ Você recebeu análises de grupos de notícias relacionadas:
 
 Escreva um resumo em Markdown seguindo esta estrutura:
 
-## Resumo de Segurança
-
-[Parágrafo de abertura: 2-3 frases sobre os temas mais importantes da semana. Priorize: vulnerabilidades acionáveis > ferramentas úteis > contexto regulatório > notícias gerais]
+[Parágrafo de abertura: 2-3 frases sobre os 3-4 temas mais importantes da semana. Priorize: vulnerabilidades acionáveis > ferramentas úteis > contexto regulatório > notícias gerais]
 
 ### [Tema 1 - título direto e descritivo]
 
-[2-3 parágrafos. Estrutura sugerida:
-- O que aconteceu (fatos, não drama)
-- Quem é afetado (seja específica sobre versões e configurações)
-- O que fazer (patch, mitigação, configuração)]
+[2-4 parágrafos descrevendo o que aconteceu (fatos, não drama), quem é afetado (seja específica sobre versões e configurações) e que fazer (patch, mitigação, configuração).]
 
 ### [Tema 2 - título direto e descritivo]
 
@@ -231,4 +226,4 @@ VALORIZE mencionar:
 - Contexto europeu (GDPR, regulamentações EU)
 - Ferramentas que podem ser self-hosted
 
-Máximo 600 palavras. Responda em português brasileiro."""
+Responda em português brasileiro."""

@@ -166,8 +166,10 @@ with get_db_connection() as session:
         try:
             print("Replacing 'NEWSLETTER'!")
 
-            session.exec(text("UPDATE articles SET newsletter_ids = NULL WHERE newsletter_ids IS NOT NULL;"))
+            session.exec(text("DELETE FROM newsletters;"))
+            session.commit()
 
+            session.exec(text("UPDATE articles SET newsletter_ids = NULL WHERE newsletter_ids IS NOT NULL;"))
             session.commit()
     
         except Exception as e:

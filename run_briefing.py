@@ -1044,6 +1044,12 @@ if __name__ == "__main__":
         action='store_true',
         help='Generate newsletter using Anthropic Batch API. Optional: use with --feed to generate for specific feed only.'
     )
+    parser.add_argument(
+        '--weekly-briefing',
+        dest='weekly_briefing',
+        action='store_true',
+        help='Generate weekly briefing using Anthropic Batch API. Optional: use with --feed to generate for specific feed only.'
+    )
 
     args = parser.parse_args()
 
@@ -1073,6 +1079,23 @@ if __name__ == "__main__":
         
         resultado = executar_pipeline_newsletter(feed_especifico)
         print(f"\nResultado do pipeline newsletter: {resultado}")
+        print(f"\nRun Finished - {datetime.now()}")
+        sys.exit(0)
+    
+
+    # --- Weekly Briefing via Batch API ---
+    if args.weekly_briefing:
+        print(f"\nMeridian Weekly Briefing Pipeline - {datetime.now()}")
+        print("Initializing database...")
+        database.init_db()
+        
+        from batch import batch_weekly_briefing
+        
+        # --feed é opcional para weekly briefing
+        feed_especifico = args.feed if args.feed else None
+        
+        resultado = batch_weekly_briefing(feed_especifico)
+        print(f"\nResultado do pipeline weekly briefing: {resultado}")
         print(f"\nRun Finished - {datetime.now()}")
         sys.exit(0)
         

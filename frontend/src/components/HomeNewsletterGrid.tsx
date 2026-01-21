@@ -28,6 +28,17 @@ function HomeNewsletterGrid() {
           if (latest) acc.push(latest);
           return acc;
         }, []);
+
+        // Ordena por generated_at DESC, depois feed_profile ASC
+        latestByFeed.sort((a, b) => {
+          const dateA = new Date(a.generated_at).toISOString().split('T')[0];
+          const dateB = new Date(b.generated_at).toISOString().split('T')[0];
+          
+          const dateCompare = dateB.localeCompare(dateA);
+          if (dateCompare !== 0) return dateCompare;
+          
+          return a.feed_profile.localeCompare(b.feed_profile);
+        });
         
         setNewsletters(latestByFeed);
         setFeeds(feedsData);
@@ -83,7 +94,7 @@ function HomeNewsletterGrid() {
   if (newsletters.length === 0) return null;
 
   return (
-    <div className="my-8 -mx-6 md:-mx-12 lg:-mx-16 relative group dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] rounded-2xl">
+    <div className="mb-8 -mx-6 md:-mx-12 lg:-mx-16 relative group dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] rounded-2xl">
       <div 
         ref={scrollRef}
         onScroll={checkScroll}

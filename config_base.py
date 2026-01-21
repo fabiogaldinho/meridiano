@@ -55,7 +55,7 @@ Analyzed News Clusters (Most significant first):
 
 # --- Processing Settings ---
 # How many hours back to look for articles when generating a brief
-MIN_IMPACT_SCORE_FOR_BRIEFING = 5
+MIN_IMPACT_SCORE_FOR_BRIEFING = 8
 
 # --- Model Settings ---
 # Model for summarization and analysis (check Deepseek docs for latest models)
@@ -63,7 +63,7 @@ MIN_IMPACT_SCORE_FOR_BRIEFING = 5
 CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
 SUMMARY_MODEL = "gpt-5.2"
 RATING_MODEL = "gpt-5-mini"
-CLUSTER_MODEL = "gpt-5-mini"
+CLUSTER_MODEL = "claude-sonnet-4-5-20250929"
 BRIEF_MODEL = "claude-sonnet-4-5-20250929"
 FILTER_MODEL = "gpt-4o-mini"
 EMBEDDING_MODEL = "text-embedding-3-small"
@@ -123,7 +123,7 @@ REGRAS:
 5. O título + resumo DEVEM ter entre 420-600 caracteres no total
 
 FORMATO DE SAÍDA (siga exatamente):
-**Título aqui:** Resumo aqui.
+**[Seu Título]:** [Seu resumo em um parágrafo único].
 
 ARTIGO:
 {raw_content}

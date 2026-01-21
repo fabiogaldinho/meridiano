@@ -4,7 +4,7 @@ This replaces the SQLite-based database.py with modern SQLModel operations.
 """
 
 import json, logging
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.exc import IntegrityError
@@ -828,6 +828,49 @@ def get_newsletter_by_id(newsletter_id: int) -> Optional[Dict[str, Any]]:
         statement = select(Newsletter).where(Newsletter.id == newsletter_id)
         newsletter = session.exec(statement).first()
         return _newsletter_to_dict(newsletter) if newsletter else None
+
+
+def get_articles_for_weekly_briefing(
+    feed_profile: str,
+    min_impact_score: int = 8
+) -> List[Dict[str, Any]]:
+    """
+    Busca artigos para o briefing semanal.
+    
+    Período: último sábado - 7 dias (sábado anterior) até último sábado - 1 dia (sexta).
+    
+    Critérios:
+    - feed_profile específico
+    - published_date no período da semana
+    - impact_score >= min_impact_score
+    - briefing_analyzed == False
+    - embedding IS NOT NULL
+    """
+    hoje = datetime.now().date()
+    dias_ate_ultimo_sabado = (hoje.weekday() - 5) % 7
+    ultimo_sabado = hoje - timedelta(days=dias_ate_ultimo_sabado)
+    
+    start_date = ultimo_sabado - timedelta(days=7)  # sábado anterior
+    end_date = ultimo_sabado - timedelta(days=1)    # sexta-feira
+    
+    with get_db_connection() as session:
+        statement = (
+            select(Article)
+            .where(
+                and_(
+                    Article.feed_profile == feed_profile,
+                    func.date(Article.published_date) >= start_date,
+                    func.date(Article.published_date) <= end_date,
+                    Article.impact_score >= min_impact_score,
+                    Article.briefing_analyzed == False,
+                    Article.embedding.is_not(None)
+                )
+            )
+            .order_by(desc(Article.impact_score), desc(Article.published_date))
+        )
+        
+        articles = session.exec(statement).all()
+        return [_article_to_dict(article) for article in articles]
 
 
 

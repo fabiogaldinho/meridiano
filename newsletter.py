@@ -1,12 +1,13 @@
 # newsletter.py
 
 import os, json, time, anthropic, importlib
+import numpy as np
 from datetime import datetime
 from dotenv import load_dotenv
 
 import database
 import config_base as config
-from utils import logger
+from utils import logger, similaridade_cosseno, deduplicar_artigos
 
 from run_briefing import send_telegram_notification, TELEGRAM_CHAT_ID
 
@@ -60,11 +61,19 @@ def coletar_artigos_para_newsletter() -> dict:
             feed_profile=feed_name,
             min_score=feed_config["min_score"],
             days_back=3,
-            limit=feed_config["limit"]
+            limit=50
         )
-        
-        logger.info(f"  {feed_name}: {len(artigos)} artigos (min_score={feed_config['min_score']})")
-        
+
+        logger.info(f"  {feed_name}: {len(artigos)} artigos brutos (min_score={feed_config['min_score']})")
+
+        # Deduplicar
+        artigos = deduplicar_artigos(artigos, threshold=0.85)
+
+        # Aplicar limite após deduplicação
+        artigos = artigos[:feed_config["limit"]]
+
+        logger.info(f"  {feed_name}: {len(artigos)} artigos após deduplicação e limite")
+
         if len(artigos) >= MIN_ARTICLES_PER_FEED:
             artigos_por_feed[feed_name] = artigos
         else:
@@ -365,7 +374,7 @@ def executar_pipeline_newsletter(feed_name: str = None) -> dict:
 
             <b>Feed:</b> {feed}
             Acesse em: https://galdinho.news/newsletters/{newsletter_id}
-            <br>
+            
             """
             send_telegram_notification(chatid, notification_message)
             logger.info(f"  📨 Notificação enviada para chat {chatid}")
