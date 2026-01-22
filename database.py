@@ -730,7 +730,7 @@ def get_articles_for_newsletter(
                     Article.feed_profile == feed_profile,
                     Article.published_date >= cutoff_date,
                     Article.impact_score >= min_score,
-                    Article.newsletter_ids.is_(None)
+                    Article.newsletter_ids.is_(None),
                     Article.newsletter_deduplicated_at.is_(None)
                 )
             )
