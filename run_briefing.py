@@ -1056,6 +1056,12 @@ if __name__ == "__main__":
         action='store_true',
         help='Run preparation stages and generate newsletter using Batch API. Runs: scrape → batch_filter → fetch_content → batch_summary → batch_embedding → batch_rating -> newsletter.'
     )
+    parser.add_argument(
+        '--batch-all',
+        dest='batch_all',
+        action='store_true',
+        help='Run preparation stages, generate newsletter and generate weekly briefing using Batch API. Runs: scrape → batch_filter → fetch_content → batch_summary → batch_embedding → batch_rating -> newsletter -> weekly briefing'
+    )
 
     args = parser.parse_args()
 
@@ -1119,6 +1125,28 @@ if __name__ == "__main__":
         from newsletter import executar_pipeline_newsletter
         resultado_2 = executar_pipeline_newsletter()
         print(f"\nResultado do pipeline newsletter: {resultado_2}")
+
+        print(f"\nRun Finished - {datetime.now()}")
+        sys.exit(0)
+
+
+    # --- Batch prepare, newsletter and weekly briefing generation via Batch API ---
+    if args.batch_all:
+        print(f"\nMeridian Batch Prepare, Newsletter and Weekly Briefing Generation Pipeline - {datetime.now()}")
+        print("Initializing database...")
+        database.init_db()
+        
+        from batch import executar_pipeline_batch
+        resultado = executar_pipeline_batch()
+        print(f"\nResultado do pipeline de batch prepare: {resultado}")
+
+        from newsletter import executar_pipeline_newsletter
+        resultado_2 = executar_pipeline_newsletter()
+        print(f"\nResultado do pipeline newsletter: {resultado_2}")
+
+        from batch import batch_weekly_briefing
+        resultado_3 = batch_weekly_briefing()
+        print(f"\nResultado do pipeline weekly briefing: {resultado_3}")
 
         print(f"\nRun Finished - {datetime.now()}")
         sys.exit(0)
