@@ -78,50 +78,50 @@ def processar_resultados_filtro(resultados):
 
 
 def main():
-    #logger.info(f"{'='*60}")
-    #logger.info(f"RECUPERANDO BATCH: {BATCH_ID}")
-    #logger.info(f"{'='*60}")
+    logger.info(f"{'='*60}")
+    logger.info(f"RECUPERANDO BATCH: {BATCH_ID}")
+    logger.info(f"{'='*60}")
     
     # Inicializar banco
     database.init_db()
     
     # 1. Aguardar batch completar
-    #logger.info(f"\n>>> Aguardando batch completar <<<")
-    #batch_status = aguardar_batch(BATCH_ID, description="filter (recuperado)")
+    logger.info(f"\n>>> Aguardando batch completar <<<")
+    batch_status = aguardar_batch(BATCH_ID, description="filter (recuperado)")
     
     #if not batch_status:
-    #    logger.error("Batch falhou ou timeout!")
-    #    sys.exit(1)
+        logger.error("Batch falhou ou timeout!")
+        sys.exit(1)
     
     # 2. Baixar resultados
-    #logger.info(f"\n>>> Baixando resultados <<<")
-    #resultados = baixar_resultados_batch(batch_status, description="filter")
+    logger.info(f"\n>>> Baixando resultados <<<")
+    resultados = baixar_resultados_batch(batch_status, description="filter")
     
     #if not resultados:
-    #    logger.error("Falha ao baixar resultados!")
-    #    sys.exit(1)
+        logger.error("Falha ao baixar resultados!")
+        sys.exit(1)
     
-    #logger.info(f"Resultados baixados: {len(resultados)} respostas")
+    logger.info(f"Resultados baixados: {len(resultados)} respostas")
     
     # 3. Processar resultados (atualizar banco com scores)
-    #logger.info(f"\n>>> Processando resultados do filtro <<<")
-    #stats_filter = processar_resultados_filtro(resultados)
-    #logger.info(f"Filtro concluído: {stats_filter}")
+    logger.info(f"\n>>> Processando resultados do filtro <<<")
+    stats_filter = processar_resultados_filtro(resultados)
+    logger.info(f"Filtro concluído: {stats_filter}")
     
     # 4. Continuar pipeline - Fase 3
-    #logger.info(f"\n>>> FASE 3: Busca de conteúdo <<<")
-    #stats_content = fetch_approved_content(feed_profile=None)
-    #logger.info(f"Fase 3 concluída: {stats_content}")
+    logger.info(f"\n>>> FASE 3: Busca de conteúdo <<<")
+    stats_content = fetch_approved_content(feed_profile=None)
+    logger.info(f"Fase 3 concluída: {stats_content}")
     
     # 5. Continuar pipeline - Fase 4a
-    #logger.info(f"\n>>> FASE 4a: Sumarização batch <<<")
-    #stats_summary = batch_summary(feed_profile=None)
-    #logger.info(f"Fase 4a concluída: {stats_summary}")
+    logger.info(f"\n>>> FASE 4a: Sumarização batch <<<")
+    stats_summary = batch_summary(feed_profile=None)
+    logger.info(f"Fase 4a concluída: {stats_summary}")
     
     # 6. Continuar pipeline - Fase 4b
-    #logger.info(f"\n>>> FASE 4b: Embeddings batch <<<")
-    #stats_embedding = batch_embedding(feed_profile=None)
-    #logger.info(f"Fase 4b concluída: {stats_embedding}")
+    logger.info(f"\n>>> FASE 4b: Embeddings batch <<<")
+    stats_embedding = batch_embedding(feed_profile=None)
+    logger.info(f"Fase 4b concluída: {stats_embedding}")
     
     # 7. Continuar pipeline - Fase 5
     logger.info(f"\n>>> FASE 5: Rating batch <<<")
@@ -132,10 +132,10 @@ def main():
     logger.info(f"\n{'='*60}")
     logger.info(f"PIPELINE CONCLUÍDO!")
     logger.info(f"{'='*60}")
-    #logger.info(f"Filtro:    {stats_filter}")
-    #logger.info(f"Conteúdo:  {stats_content}")
-    #logger.info(f"Sumário:   {stats_summary}")
-    #logger.info(f"Embedding: {stats_embedding}")
+    logger.info(f"Filtro:    {stats_filter}")
+    logger.info(f"Conteúdo:  {stats_content}")
+    logger.info(f"Sumário:   {stats_summary}")
+    logger.info(f"Embedding: {stats_embedding}")
     logger.info(f"Rating:    {stats_rating}")
 
 

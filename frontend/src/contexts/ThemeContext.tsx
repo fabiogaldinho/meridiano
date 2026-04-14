@@ -25,13 +25,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
+    document.body.style.backgroundColor = theme === 'dark' ? '#101628' : '#ECECEE';
 
     localStorage.setItem('theme', theme);
 
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) { 
-       metaThemeColor.setAttribute('content', theme === 'dark' ? '#0f172a' : '#2563eb');
+    // Atualiza meta theme-color
+    const existingMeta = document.querySelector('meta[name="theme-color"]');
+    if (existingMeta) {
+        existingMeta.remove();
     }
+    const newMeta = document.createElement('meta');
+    newMeta.name = 'theme-color';
+    newMeta.content = theme === 'dark' ? '#151823' : '#2563eb';
+    document.head.appendChild(newMeta);
   }, [theme]);
 
   const toggleTheme = () => {

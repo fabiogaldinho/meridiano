@@ -159,6 +159,7 @@ function BriefingPage() {
       {/* Content */}
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 mb-8">
        <div className="prose prose-lg max-w-none prose-headings:text-gray-800 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-strong:text-gray-900 dark:prose-strong:text-gray-200 dark:prose-li:text-gray-300">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4"><b>RESUMO DA SEMANA</b></h2>
           <ReactMarkdown rehypePlugins={[rehypeRaw]}>
             {briefing.brief_markdown}
           </ReactMarkdown>

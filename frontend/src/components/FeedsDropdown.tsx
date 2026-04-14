@@ -93,19 +93,19 @@ function FeedsDropdown() {
         <div className="
           absolute top-full mt-2 right-0
           bg-white rounded-lg shadow-lg
-          min-w-[200px]
+          dark:bg-slate-800 min-w-[200px]
           py-2
         ">
           {/* Estado: Carregando */}
           {loading && (
-            <div className="px-4 py-2 text-gray-500 text-sm">
+            <div className="px-4 py-2 text-gray-500 dark:text-gray-400 text-sm">
               Carregando...
             </div>
           )}
 
           {/* Estado: Erro */}
           {error && (
-            <div className="px-4 py-2 text-red-500 text-sm">
+            <div className="px-4 py-2 text-red-500 dark:text-red-400 text-sm">
               {error}
             </div>
           )}
@@ -115,10 +115,12 @@ function FeedsDropdown() {
             <Link
               key={feed.name}
               to={`/feeds/${feed.name}`}
+              onClick={() => setIsOpen(false)}
               className="
-                block px-4 py-2
+                block px-4 py-2 dark:text-gray-200
                 text-gray-700 hover:bg-blue-50 hover:text-blue-600
-                transition-colors duration-150
+                transition-colors duration-150 dark:hover:bg-slate-700
+                dark:hover:text-blue-400
               "
             >
               {feed.display_name}

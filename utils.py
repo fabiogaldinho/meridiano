@@ -1,8 +1,9 @@
-import trafilatura, requests, logging
+import trafilatura, requests, logging, json
 from datetime import datetime
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from pathlib import Path
+import numpy as np
 
 logging.basicConfig(
     level=logging.INFO,
@@ -218,3 +219,73 @@ def get_active_feeds():
         feeds.append(file.stem)
     
     return sorted(feeds)
+
+
+def similaridade_cosseno(emb1: list, emb2: list) -> float:
+    """Calcula similaridade de cosseno entre dois embeddings."""
+    a = np.array(emb1)
+    b = np.array(emb2)
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+
+def deduplicar_artigos(artigos: list, threshold: float = 0.85, retornar_removidos: bool = False) -> list | tuple[list, list]:
+    """
+    Remove artigos duplicados baseado na similaridade de embeddings.
+    Mantém o artigo com maior impact_score de cada grupo similar.
+    """
+    if len(artigos) <= 1:
+        if retornar_removidos:
+            return artigos, []
+        return artigos
+    
+    # Parse embeddings
+    for artigo in artigos:
+        emb = artigo.get('embedding')
+        if emb and isinstance(emb, str):
+            artigo['_embedding'] = json.loads(emb)
+        elif emb:
+            artigo['_embedding'] = emb
+        else:
+            artigo['_embedding'] = None
+    
+    # Marcar artigos a remover
+    remover = set()
+    ids_removidos = []
+    
+    for i, art1 in enumerate(artigos):
+        if i in remover or art1['_embedding'] is None:
+            continue
+            
+        for j, art2 in enumerate(artigos[i+1:], start=i+1):
+            if j in remover or art2['_embedding'] is None:
+                continue
+            
+            sim = similaridade_cosseno(art1['_embedding'], art2['_embedding'])
+            
+            if sim >= threshold:
+                # Mantém o de maior impact_score
+                score1 = art1.get('impact_score') or 0
+                score2 = art2.get('impact_score') or 0
+                
+                if score1 >= score2:
+                    remover.add(j)
+                    ids_removidos.append(art2['id'])
+                    logger.info(f"  Duplicado: '{art2['title'][:50]}...' (sim={sim:.2f}) -> removido")
+                else:
+                    remover.add(i)
+                    ids_removidos.append(art1['id'])
+                    logger.info(f"  Duplicado: '{art1['title'][:50]}...' (sim={sim:.2f}) -> removido")
+                    break  # art1 foi removido, sai do loop interno
+    
+    # Limpar campo temporário e filtrar
+    resultado = []
+    for i, artigo in enumerate(artigos):
+        del artigo['_embedding']
+        if i not in remover:
+            resultado.append(artigo)
+    
+    logger.info(f"  Deduplicação: {len(artigos)} -> {len(resultado)} artigos")
+
+    if retornar_removidos:
+        return resultado, ids_removidos
+    return resultado

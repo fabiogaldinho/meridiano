@@ -100,7 +100,7 @@ Responda em português brasileiro."""
 
 
 # Used in generate_brief (can be overridden per profile)
-PROMPT_BRIEF_SYNTHESIS = """Você está escrevendo um resumo de notícias para um leitor brasileiro de esquerda que acompanha política nacional, direitos humanos e questões sociais.
+PROMPT_BRIEF_SYNTHESIS = """Você está escrevendo um resumo das principais notícias da última semana para um leitor brasileiro de esquerda que acompanha política nacional, direitos humanos e questões sociais.
 
 Seu leitor:
 - Valoriza jornalismo investigativo (Piauí, Intercept Brasil)
@@ -116,9 +116,7 @@ Você recebeu análises de grupos de notícias relacionadas:
 
 Escreva um resumo em Markdown seguindo esta estrutura:
 
-## Resumo do Dia
-
-[Parágrafo de abertura: 2-3 frases sobre os 3-4 temas mais importantes do dia, em ordem de relevância/urgência]
+[Parágrafo de abertura: 2-3 frases sobre os 3-4 temas mais importantes da semana, em ordem de relevância/urgência. Comece referenciando que é um resumo semanal como "Esta semana trouxe..." ou "A semana trouxe..." ou uma variação.]
 
 ### [Tema 1 - título direto e descritivo]
 
@@ -144,7 +142,7 @@ EVITE:
 - Tom sensacionalista ou alarmista
 - Jargão acadêmico ou burocrático
 
-Máximo 600 palavras. Responda em português brasileiro."""
+Responda em português brasileiro."""
 
 
 # FILTRO INICIAL PARA DECIDIR QUAL NOTÍCIA IMPORTAR

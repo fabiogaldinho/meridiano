@@ -1038,10 +1038,34 @@ if __name__ == "__main__":
         action='store_true',
         help='Run preparation stages using Batch API. Runs: scrape → batch_filter → fetch_content → batch_summary → batch_embedding → batch_rating.'
     )
+    parser.add_argument(
+        '--newsletter',
+        dest='newsletter',
+        action='store_true',
+        help='Generate newsletter using Anthropic Batch API. Optional: use with --feed to generate for specific feed only.'
+    )
+    parser.add_argument(
+        '--weekly-briefing',
+        dest='weekly_briefing',
+        action='store_true',
+        help='Generate weekly briefing using Anthropic Batch API. Optional: use with --feed to generate for specific feed only.'
+    )
+    parser.add_argument(
+        '--batch-prepare-and-newsletter',
+        dest='batch_prepare_and_newsletter',
+        action='store_true',
+        help='Run preparation stages and generate newsletter using Batch API. Runs: scrape → batch_filter → fetch_content → batch_summary → batch_embedding → batch_rating -> newsletter.'
+    )
+    parser.add_argument(
+        '--batch-all',
+        dest='batch_all',
+        action='store_true',
+        help='Run preparation stages, generate newsletter and generate weekly briefing using Batch API. Runs: scrape → batch_filter → fetch_content → batch_summary → batch_embedding → batch_rating -> newsletter -> weekly briefing'
+    )
 
     args = parser.parse_args()
 
-    # --- Validação: --batch-prepare não precisa de --feed ---
+    # --- Batch prepare via Batch API ---
     if args.batch_prepare:
         print(f"\nMeridian Batch Pipeline - {datetime.now()}")
         print("Initializing database...")
@@ -1051,7 +1075,82 @@ if __name__ == "__main__":
         resultado = executar_pipeline_batch()
         print(f"\nResultado do pipeline batch: {resultado}")
         print(f"\nRun Finished - {datetime.now()}")
-        sys.exit(0)  # Sai aqui, não continua o resto
+        sys.exit(0)
+    
+
+    # --- Newsletter via Batch API ---
+    if args.newsletter:
+        print(f"\nMeridian Newsletter Pipeline - {datetime.now()}")
+        print("Initializing database...")
+        database.init_db()
+        
+        from newsletter import executar_pipeline_newsletter
+        
+        # --feed é opcional para newsletter
+        feed_especifico = args.feed if args.feed else None
+        
+        resultado = executar_pipeline_newsletter(feed_especifico)
+        print(f"\nResultado do pipeline newsletter: {resultado}")
+        print(f"\nRun Finished - {datetime.now()}")
+        sys.exit(0)
+    
+
+    # --- Weekly Briefing via Batch API ---
+    if args.weekly_briefing:
+        print(f"\nMeridian Weekly Briefing Pipeline - {datetime.now()}")
+        print("Initializing database...")
+        database.init_db()
+        
+        from batch import batch_weekly_briefing
+        
+        # --feed é opcional para weekly briefing
+        feed_especifico = args.feed if args.feed else None
+        
+        resultado = batch_weekly_briefing(feed_especifico)
+        print(f"\nResultado do pipeline weekly briefing: {resultado}")
+        print(f"\nRun Finished - {datetime.now()}")
+        sys.exit(0)
+
+
+    # --- Batch prepare and newsletter generation via Batch API ---
+    if args.batch_prepare_and_newsletter:
+        print(f"\nMeridian Batch Prepare and Newsletter Generation Pipeline - {datetime.now()}")
+        print("Initializing database...")
+        database.init_db()
+        
+        from batch import executar_pipeline_batch
+        resultado = executar_pipeline_batch()
+        print(f"\nResultado do pipeline de batch prepare: {resultado}")
+
+        from newsletter import executar_pipeline_newsletter
+        resultado_2 = executar_pipeline_newsletter()
+        print(f"\nResultado do pipeline newsletter: {resultado_2}")
+
+        print(f"\nRun Finished - {datetime.now()}")
+        sys.exit(0)
+
+
+    # --- Batch prepare, newsletter and weekly briefing generation via Batch API ---
+    if args.batch_all:
+        print(f"\nMeridian Batch Prepare, Newsletter and Weekly Briefing Generation Pipeline - {datetime.now()}")
+        print("Initializing database...")
+        database.init_db()
+        
+        from batch import executar_pipeline_batch
+        resultado = executar_pipeline_batch()
+        print(f"\nResultado do pipeline de batch prepare: {resultado}")
+
+        from newsletter import executar_pipeline_newsletter
+        resultado_2 = executar_pipeline_newsletter()
+        print(f"\nResultado do pipeline newsletter: {resultado_2}")
+
+        from batch import batch_weekly_briefing
+        resultado_3 = batch_weekly_briefing()
+        print(f"\nResultado do pipeline weekly briefing: {resultado_3}")
+
+        print(f"\nRun Finished - {datetime.now()}")
+        sys.exit(0)
+        
 
     # --- Para outros comandos, --feed é obrigatório ---
     if not args.feed:

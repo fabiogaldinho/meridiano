@@ -69,6 +69,10 @@ class Article(SQLModel, table=True):
         default=None,
         description="JSON array of newsletter IDs where this article was used"
     )
+    newsletter_deduplicated_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when article was excluded by deduplication in newsletter"
+    )
 
 
 class Brief(SQLModel, table=True):
@@ -105,6 +109,7 @@ class Newsletter(SQLModel, table=True):
     feed_profile: str = Field(default="default", index=True)
     newsletter_markdown: str
     contributing_article_ids: Optional[str] = None  # JSON string
+    featured_image: Optional[str] = Field(default=None)
 
 
 class User(SQLModel, table=True):

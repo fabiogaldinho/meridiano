@@ -5,6 +5,7 @@ import Carousel from '../components/Carousel';
 import TrendingSection from '../components/TrendingSection';
 import PaginatedArticles from '../components/PaginatedArticles';
 import SkeletonCarousel from '../components/SkeletonCarousel';
+import HomeNewsletterGrid from '../components/HomeNewsletterGrid';
 
 function Home() {
   // Estado para guardar a lista de briefings
@@ -61,6 +62,9 @@ function Home() {
   // RETURN = MOSTRAR DADOS
   return (
       <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Newsletters Grid */}
+          <HomeNewsletterGrid />
+
           {/* Carrossel */}
           {loading ? (
               <SkeletonCarousel />

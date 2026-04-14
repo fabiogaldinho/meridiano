@@ -1,9 +1,16 @@
-import json, time, tempfile, openai
+import json, time, tempfile, openai, importlib
 from pathlib import Path
 from datetime import datetime
+import numpy as np
 
 import config_base as config
-from utils import get_active_feeds, logger
+from utils import get_active_feeds, logger, deduplicar_artigos
+from newsletter import enviar_batch_anthropic, aguardar_batch_anthropic, processar_resultados_batch
+from sklearn.cluster import KMeans
+from database import get_articles_for_weekly_briefing, save_brief
+from models import Article
+from db import get_db_connection
+from sqlmodel import select
 
 
 # Cliente OpenAI
@@ -917,4 +924,361 @@ def executar_pipeline_batch():
         "summary": stats_summary,
         "embedding": stats_embedding,
         "rating": stats_rating
+    }
+
+
+def clusterizar_artigos(artigos: list, min_articles: int = 5, max_clusters: int = 10) -> dict | None:
+    """
+    Agrupa artigos em clusters usando KMeans baseado nos embeddings.
+    """
+    if len(artigos) < min_articles:
+        logger.info(f"  Poucos artigos ({len(artigos)}) para clustering (mín: {min_articles})")
+        return None
+    
+    # Extrair embeddings válidos
+    embeddings = []
+    artigos_validos = []
+    
+    for art in artigos:
+        emb = art.get('embedding')
+        if emb:
+            if isinstance(emb, str):
+                emb = json.loads(emb)
+            embeddings.append(emb)
+            artigos_validos.append(art)
+    
+    if len(embeddings) < min_articles:
+        logger.info(f"  Poucos embeddings válidos ({len(embeddings)})")
+        return None
+    
+    # Determinar número de clusters
+    n_clusters = min(max_clusters, max(2, len(embeddings) // 5))
+    logger.info(f"  Clustering {len(embeddings)} artigos em {n_clusters} clusters...")
+    
+    # Executar KMeans
+    embedding_matrix = np.array(embeddings)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    kmeans.fit(embedding_matrix)
+    
+    # Agrupar artigos por cluster
+    clusters = {}
+    for idx, label in enumerate(kmeans.labels_):
+        label_int = int(label)
+        if label_int not in clusters:
+            clusters[label_int] = []
+        clusters[label_int].append(artigos_validos[idx])
+    
+    # Log dos clusters
+    for label, arts in sorted(clusters.items()):
+        logger.info(f"    Cluster {label}: {len(arts)} artigos")
+    
+    return clusters
+
+
+def montar_requests_analise_clusters(clusters: dict, feed_profile: str) -> list:
+    """
+    Monta requests para análise de cada cluster via Anthropic Batch API.
+    """
+    # Carregar prompt específico do feed
+    try:
+        feed_module = importlib.import_module(f"feeds.{feed_profile}")
+        prompt_template = getattr(
+            feed_module, 
+            'PROMPT_CLUSTER_ANALYSIS', 
+            config.PROMPT_CLUSTER_ANALYSIS
+        )
+    except ImportError:
+        prompt_template = config.PROMPT_CLUSTER_ANALYSIS
+    
+    cluster_model = config.CLUSTER_MODEL
+    
+    requests = []
+    
+    for label, artigos in clusters.items():
+        # Montar texto com resumos dos artigos do cluster
+        summaries = []
+        for art in artigos:
+            summary = art.get('processed_content', '')
+            if summary:
+                summaries.append(f"- {summary}")
+        
+        cluster_summaries_text = "\n\n".join(summaries)
+        
+        # Formatar prompt
+        prompt = prompt_template.format(
+            cluster_summaries_text=cluster_summaries_text,
+            feed_profile=feed_profile
+        )
+        
+        # Montar request no formato Anthropic Batch
+        request = {
+            "custom_id": f"{feed_profile}-cluster-{label}",
+            "params": {
+                "model": cluster_model,
+                "max_tokens": 2024,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ]
+            }
+        }
+        
+        requests.append(request)
+    
+    logger.info(f"  Montados {len(requests)} requests de análise de clusters")
+    return requests
+
+
+def montar_request_sintese_briefing(
+    analises_clusters: dict, 
+    feed_profile: str,
+    clusters: dict
+) -> dict:
+    """
+    Monta request para síntese final do briefing via Anthropic Batch API.
+    """
+    # Carregar prompt específico do feed
+    try:
+        feed_module = importlib.import_module(f"feeds.{feed_profile}")
+        prompt_template = getattr(
+            feed_module, 
+            'PROMPT_BRIEF_SYNTHESIS', 
+            config.PROMPT_BRIEF_SYNTHESIS
+        )
+    except ImportError:
+        prompt_template = config.PROMPT_BRIEF_SYNTHESIS
+    
+    brief_model = config.BRIEF_MODEL
+    
+    # Montar texto com análises dos clusters
+    clusters_ordenados = sorted(
+        clusters.items(),
+        key=lambda x: len(x[1]),
+        reverse=True
+    )
+    
+    cluster_analyses_text = ""
+    for label, artigos in clusters_ordenados:
+        custom_id = f"{feed_profile}-cluster-{label}"
+        analise = analises_clusters.get(custom_id, "Análise não disponível")
+        
+        cluster_analyses_text += f"--- Cluster {label + 1} ({len(artigos)} artigos) ---\n"
+        cluster_analyses_text += f"Análise: {analise}\n\n"
+    
+    # Formatar prompt
+    prompt = prompt_template.format(
+        cluster_analyses_text=cluster_analyses_text,
+        feed_profile=feed_profile
+    )
+    
+    # Montar request
+    request = {
+        "custom_id": f"{feed_profile}-sintese",
+        "params": {
+            "model": brief_model,
+            "max_tokens": 20096,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
+    }
+    
+    logger.info(f"  Request de síntese montado para {feed_profile} ({len(clusters)} clusters)")
+    return request
+
+
+def batch_weekly_briefing(feed_profile: str = None):
+    """
+    Gera briefing semanal via Anthropic Batch API.
+    
+    Etapas:
+    1. Buscar artigos da semana e clusterizar (todos os feeds)
+    2. Enviar batch de análise de clusters
+    3. Enviar batch de síntese de briefings
+    4. Salvar briefings e marcar artigos
+    
+    Se feed_profile for especificado, processa apenas esse feed.
+    """
+    logger.info(f"{'='*60}")
+    logger.info(f"BRIEFING SEMANAL - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    logger.info(f"{'='*60}")
+    
+    # Determinar feeds a processar
+    if feed_profile:
+        feeds_para_processar = [feed_profile]
+    else:
+        feeds_para_processar = get_active_feeds()
+    
+    logger.info(f"Feeds a processar: {feeds_para_processar}")
+    
+
+    # ========================================
+    # FASE 1: Coleta, deduplicação e clustering
+    # ========================================
+    logger.info(f"\n>>> FASE 1: Coleta e clustering <<<")
+    
+    dados_por_feed = {}
+    
+    for feed in feeds_para_processar:
+        logger.info(f"\n  Processando feed: {feed}")
+        
+        # Buscar artigos da semana
+        artigos = get_articles_for_weekly_briefing(feed, min_impact_score=8)
+        logger.info(f"    Artigos encontrados: {len(artigos)}")
+        
+        if not artigos:
+            logger.info(f"    Nenhum artigo, pulando...")
+            continue
+        
+        # Deduplicar
+        artigos = deduplicar_artigos(artigos, threshold=0.85)
+        logger.info(f"    Artigos após deduplicação: {len(artigos)}")
+        
+        # Clustering
+        clusters = clusterizar_artigos(artigos, min_articles=5, max_clusters=10)
+        
+        if clusters is None:
+            logger.info(f"    Poucos artigos para clustering, pulando...")
+            continue
+        
+        logger.info(f"    Clusters formados: {len(clusters)}")
+        
+        dados_por_feed[feed] = {
+            "artigos": artigos,
+            "clusters": clusters
+        }
+    
+    if not dados_por_feed:
+        logger.info("Nenhum feed com dados suficientes para briefing")
+        return {"status": "sem_dados", "feeds_processados": 0}
+    
+
+    # ========================================
+    # FASE 2: Batch de análise de clusters
+    # ========================================
+    logger.info(f"\n>>> FASE 2: Análise de clusters (batch) <<<")
+    
+    # Montar todos os requests de análise
+    todos_requests_analise = []
+    for feed, dados in dados_por_feed.items():
+        requests_feed = montar_requests_analise_clusters(dados["clusters"], feed)
+        todos_requests_analise.extend(requests_feed)
+    
+    logger.info(f"Total de requests de análise: {len(todos_requests_analise)}")
+    
+    # Enviar batch
+    batch_id_analise = enviar_batch_anthropic(todos_requests_analise, "analise-clusters")
+    if not batch_id_analise:
+        logger.error("Falha ao enviar batch de análise")
+        return {"status": "erro", "fase": "envio_batch_analise"}
+    
+    # Aguardar
+    batch_completo = aguardar_batch_anthropic(batch_id_analise, "analise-clusters")
+    if not batch_completo:
+        logger.error("Batch de análise não completou")
+        return {"status": "erro", "fase": "aguardar_batch_analise"}
+    
+    # Processar resultados
+    resultados_analise = processar_resultados_batch(batch_id_analise, "analise-clusters")
+    if not resultados_analise:
+        logger.error("Falha ao processar resultados de análise")
+        return {"status": "erro", "fase": "processar_batch_analise"}
+    
+    logger.info(f"Análises recebidas: {len(resultados_analise)}")
+    
+
+    # ========================================
+    # FASE 3: Batch de síntese de briefings
+    # ========================================
+    logger.info(f"\n>>> FASE 3: Síntese de briefings (batch) <<<")
+    
+    # Montar requests de síntese
+    todos_requests_sintese = []
+    for feed, dados in dados_por_feed.items():
+        request_sintese = montar_request_sintese_briefing(
+            resultados_analise,
+            feed,
+            dados["clusters"]
+        )
+        todos_requests_sintese.append(request_sintese)
+    
+    logger.info(f"Total de requests de síntese: {len(todos_requests_sintese)}")
+    
+    # Enviar batch
+    batch_id_sintese = enviar_batch_anthropic(todos_requests_sintese, "sintese-briefings")
+    if not batch_id_sintese:
+        logger.error("Falha ao enviar batch de síntese")
+        return {"status": "erro", "fase": "envio_batch_sintese"}
+    
+    # Aguardar
+    batch_completo = aguardar_batch_anthropic(batch_id_sintese, "sintese-briefings")
+    if not batch_completo:
+        logger.error("Batch de síntese não completou")
+        return {"status": "erro", "fase": "aguardar_batch_sintese"}
+    
+    # Processar resultados
+    resultados_sintese = processar_resultados_batch(batch_id_sintese, "sintese-briefings")
+    if not resultados_sintese:
+        logger.error("Falha ao processar resultados de síntese")
+        return {"status": "erro", "fase": "processar_batch_sintese"}
+    
+    logger.info(f"Sínteses recebidas: {len(resultados_sintese)}")
+    
+
+    # ========================================
+    # FASE 4: Salvar briefings e marcar artigos
+    # ========================================
+    logger.info(f"\n>>> FASE 4: Salvando briefings <<<")
+    
+    briefings_salvos = []
+    
+    for feed, dados in dados_por_feed.items():
+        custom_id = f"{feed}-sintese"
+        
+        if custom_id not in resultados_sintese:
+            logger.warning(f"  Síntese não encontrada para {feed}")
+            continue
+        
+        briefing_markdown = resultados_sintese[custom_id]
+        
+        # Coletar IDs dos artigos usados
+        article_ids = [art["id"] for art in dados["artigos"]]
+        
+        # Salvar briefing
+        brief_id = save_brief(briefing_markdown, article_ids, feed)
+        
+        # Marcar artigos como analisados
+        with get_db_connection() as session:
+            for art_id in article_ids:
+                article = session.exec(
+                    select(Article).where(Article.id == art_id)
+                ).first()
+                
+                if article:
+                    article.briefing_analyzed = True
+                    session.add(article)
+            
+            session.commit()
+        
+        logger.info(f"  {feed}: Briefing {brief_id} salvo ({len(article_ids)} artigos)")
+        
+        briefings_salvos.append({
+            "feed": feed,
+            "brief_id": brief_id,
+            "artigos": len(article_ids),
+            "clusters": len(dados["clusters"])
+        })
+    
+    
+    # ========================================
+    # Resumo final
+    # ========================================
+    logger.info(f"\n{'='*60}")
+    logger.info(f"BRIEFING SEMANAL CONCLUÍDO")
+    logger.info(f"{'='*60}")
+    
+    return {
+        "status": "sucesso",
+        "batch_analise": batch_id_analise,
+        "batch_sintese": batch_id_sintese,
+        "briefings": briefings_salvos
     }

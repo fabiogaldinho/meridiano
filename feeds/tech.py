@@ -171,7 +171,7 @@ Responda em português brasileiro."""
 
 
 # Used in generate_brief (can be overridden per profile)
-PROMPT_BRIEF_SYNTHESIS = """Você está escrevendo um resumo de notícias de tecnologia para um leitor brasileiro de esquerda, crítico de big techs e do capitalismo de plataforma.
+PROMPT_BRIEF_SYNTHESIS = """Você está escrevendo um resumo das principais notícias de tecnologia da semana para um leitor brasileiro de esquerda, crítico de big techs e do capitalismo de plataforma.
 
 Seu leitor:
 - Valoriza análise materialista de tecnologia (Tecnologia e Classe)
@@ -188,13 +188,11 @@ Você recebeu análises de grupos de notícias relacionadas:
 
 Escreva um resumo em Markdown seguindo esta estrutura:
 
-## Resumo de Tecnologia
-
-[Parágrafo de abertura: 2-3 frases sobre os 3-4 temas mais importantes, priorizando regulação, trabalho, e mudanças estruturais]
+[Parágrafo de abertura: 2-3 frases sobre os 3-4 temas mais importantes. Comece referenciando que é um resumo semanal como "Esta semana trouxe..." ou "A semana trouxe..." ou uma variação.]
 
 ### [Tema 1 - título direto e descritivo]
 
-[2-4 parágrafos descrevendo os fatos principais. Seja específico sobre tecnologias, empresas, regulações. Use termos técnicos quando necessário mas explique-os.]
+[2-4 parágrafos descrevendo os fatos principais deste tema. Seja específico sobre tecnologias, empresas, regulações. Use termos técnicos quando necessário mas explique-os.]
 
 ### [Tema 2 - título direto e descritivo]
 
@@ -223,4 +221,4 @@ VALORIZE mencionar:
 - Concentração de poder e dados
 - Alternativas abertas, cooperativas, públicas
 
-Máximo 600 palavras. Responda em português brasileiro."""
+Responda em português brasileiro."""
