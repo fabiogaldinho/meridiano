@@ -380,8 +380,8 @@ def executar_pipeline_newsletter(feed_name: str = None) -> dict:
             Acesse em: https://galdinho.news/newsletters/{newsletter_id}
             
             """
-            send_telegram_notification(chatid, notification_message)
-            logger.info(f"  📨 Notificação enviada para chat {chatid}")
+            #send_telegram_notification(chatid, notification_message)
+            #logger.info(f"  📨 Notificação enviada para chat {chatid}")
 
     
     # Resumo final
